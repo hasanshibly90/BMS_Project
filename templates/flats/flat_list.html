@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-head">
+  <h1 class="h1">Flats</h1>
+  <div class="sub">Filter, edit status inline, and manage units</div>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card"><div class="kpi-value">{{ cnt_owner }}</div><div class="kpi-label">Owner occupied</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ cnt_rented }}</div><div class="kpi-label">Rented</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ cnt_vacant }}</div><div class="kpi-label">Vacant</div></div>
+</div>
+
+<div class="card">
+  <div class="toolbar">
+    <form method="get" class="filters">
+      <input type="text" name="q" value="{{ q }}" placeholder="Search: 7 or A or remark">
+      <select name="floor">
+        <option value="">Floor</option>
+        {% for f in floors %}
+          <option value="{{ f }}" {% if floor|stringformat:'s' == f|stringformat:'s' %}selected{% endif %}>{{ f }}</option>
+        {% endfor %}
+      </select>
+      <select name="status">
+        <option value="">Status</option>
+        {% for key,label in status_choices %}
+          <option value="{{ key }}" {% if status == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn" type="submit">Apply</button>
+      <a class="btn ghost" href="{% url 'flats:list' %}">Reset</a>
+    </form>
+    <div class="actions">
+      <a class="btn" href="{% url 'flats:create' %}">Add flat</a>
+    </div>
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Flat</th>
+        <th>Floor</th>
+        <th>Status</th>
+        <th>Remarks</th>
+        <th style="width:160px">Update status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in object_list %}
+      <tr>
+        <td>{{ o.unit }}-{{ o.floor|stringformat:"02d" }}</td>
+        <td>{{ o.floor }}</td>
+        <td>
+          {% if o.status_hint == 'owner' %}
+            <span class="badge ok">Owner</span>
+          {% elif o.status_hint == 'rented' %}
+            <span class="badge info">Rented</span>
+          {% else %}
+            <span class="badge muted">Vacant</span>
+          {% endif %}
+        </td>
+        <td>{{ o.remarks }}</td>
+        <td>
+          <form method="post" action="{% url 'flats:status' o.pk %}" data-autosubmit>
+            {% csrf_token %}
+            <select name="status_hint" class="js-auto-submit">
+              {% for key,label in status_choices %}
+                <option value="{{ key }}" {% if o.status_hint == key %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <noscript><button class="btn sm" type="submit">Save</button></noscript>
+          </form>
+        </td>
+        <td>
+          <a class="btn ghost" href="{% url 'flats:edit' o.pk %}">Edit</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted">No flats found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if is_paginated %}
+  <div class="pager">
+    {% if page_obj.has_previous %}
+      <a class="btn ghost sm" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&status={{ status }}&floor={{ floor }}">Prev</a>
+    {% endif %}
+    <span class="muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a class="btn ghost sm" href="?page={{ page_obj.next_page_number }}&q={{ q }}&status={{ status }}&floor={{ floor }}">Next</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

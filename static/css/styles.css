@@ -31,6 +31,7 @@ body{background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial,
 .page-head{margin-bottom:14px}
 .h1{margin:0 0 4px 0;font-size:26px}
 .sub{color:var(--muted);font-size:14px}
+.pager{display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-top:10px}
 
 /* Cards */
 .card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:18px;box-shadow:0 3px 18px rgba(0,0,0,.18)}
@@ -43,7 +44,7 @@ body{background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial,
 .kpi-value{font-size:28px;font-weight:800}
 .kpi-label{color:var(--muted)}
 
-/* Building grid */
+/* Building grid (dashboard) */
 .building-grid{display:flex;flex-direction:column;gap:4px;overflow:auto}
 .grid-head,.grid-row{display:grid;grid-template-columns:repeat(9,1fr);gap:4px}
 .cell{display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:8px;min-height:34px;background:#0b1423}
@@ -60,9 +61,17 @@ body{background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial,
 .badge.muted{background:rgba(148,163,184,.2)}
 .actions{display:flex;flex-wrap:wrap;gap:10px}
 
-/* Tables and forms (for list pages later) */
+/* Toolbar (filters) */
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.filters{display:flex;flex-wrap:wrap;gap:8px}
+.filters input[type="text"], .filters select{
+  padding:9px;border:1px solid var(--line);border-radius:8px;background:#0b1423;color:var(--ink)
+}
+.theme-light .filters input[type="text"], .theme-light .filters select{background:#ffffff}
+
+/* Tables and forms */
 .table{width:100%;border-collapse:collapse}
-.table th,.table td{padding:10px;border-bottom:1px solid var(--line);text-align:left}
+.table th,.table td{padding:10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
 .table th{color:var(--muted);font-weight:600}
 .form p{margin:0 0 10px}
 .form input,.form select,.form textarea{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:#0b1423;color:var(--ink)}
