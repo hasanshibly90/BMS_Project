@@ -12,6 +12,6 @@ db.sqlite3
 /media/
 staticfiles/
 
-# VSCode / JetBrains
+# Editors
 .vscode/
 .idea/
