@@ -1,0 +1,37 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="h1">Form</h1>
+  <div class="sub">Fill the fields below and save</div>
+</div>
+
+<div class="card">
+  {% if form.non_field_errors %}
+    <div class="messages">
+      {% for e in form.non_field_errors %}
+        <div class="msg error">{{ e }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="form">
+    {% csrf_token %}
+
+    {% for field in form %}
+      <p>
+        <label for="{{ field.id_for_label }}"><strong>{{ field.label }}</strong></label><br>
+        {{ field }}
+        {% if field.help_text %}<br><small class="muted">{{ field.help_text }}</small>{% endif %}
+        {% for e in field.errors %}
+          <div class="msg error">{{ e }}</div>
+        {% endfor %}
+      </p>
+    {% endfor %}
+
+    <div class="form-actions">
+      <button class="btn" type="submit">Save</button>
+      <a class="btn ghost" href="javascript:history.back()">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

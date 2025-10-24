@@ -1,3 +1,4 @@
+@"
 {% if messages %}
   <div class="messages">
     {% for m in messages %}
@@ -5,3 +6,4 @@
     {% endfor %}
   </div>
 {% endif %}
+"@ | Set-Content .\templates\_messages.html -Encoding UTF8
