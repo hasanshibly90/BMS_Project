@@ -8,9 +8,17 @@
 
 <!-- OWNER PANEL -->
 <div class="card">
-  <div class="card-head">
+  <div class="card-head" style="gap:8px;align-items:center">
     <h2 class="card-title">Owner</h2>
-    {% if active_owner %}<span class="badge ok">Active</span>{% else %}<span class="badge muted">None</span>{% endif %}
+    {% if active_owner %}
+      <span class="badge ok">Active</span>
+    {% else %}
+      <span class="badge muted">None</span>
+    {% endif %}
+    <span class="badge muted">
+      Current:
+      {% if active_owner %}{{ active_owner.owner.name }}{% else %}None{% endif %}
+    </span>
   </div>
 
   {% if active_owner %}
@@ -28,7 +36,7 @@
     <p>
       <label><strong>Owner</strong></label><br>
       <input type="text" id="ownerSearch" class="filter-input"
-             placeholder="Search (or browse): flat code or owner name" autocomplete="off">
+             placeholder="Search (or browse): flat code (e.g. E-10) or owner name" autocomplete="off">
       <input type="hidden" name="owner" id="id_owner">
       <div id="ownerResults" class="typeahead-panel" hidden></div>
     </p>
@@ -43,9 +51,17 @@
 
 <!-- LESSEE PANEL -->
 <div class="card">
-  <div class="card-head">
+  <div class="card-head" style="gap:8px;align-items:center">
     <h2 class="card-title">Lessee</h2>
-    {% if active_lessee %}<span class="badge info">Active</span>{% else %}<span class="badge muted">None</span>{% endif %}
+    {% if active_lessee %}
+      <span class="badge info">Active</span>
+    {% else %}
+      <span class="badge muted">None</span>
+    {% endif %}
+    <span class="badge muted">
+      Current:
+      {% if active_lessee %}{{ active_lessee.lessee.name }}{% else %}None{% endif %}
+    </span>
   </div>
 
   {% if active_lessee %}
@@ -53,7 +69,7 @@
     <p class="muted">From {{ active_lessee.start_date }} to {{ active_lessee.end_date|default:"present" }}</p>
     <form method="post" action="{% url 'flats:end_lessee' flat.pk %}">
       {% csrf_token %}
-      <button class="btn ghost" type="submit">End lessee now</button>
+      <button class="btn gobtn danger" type="submit">End lessee now</button>
     </form>
     <hr style="border-color:var(--line);margin:14px 0">
   {% endif %}
@@ -63,7 +79,7 @@
     <p>
       <label><strong>Lessee</strong></label><br>
       <input type="text" id="lesseeSearch" class="filter-input"
-             placeholder="Search (or browse): flat code or lessee name" autocomplete="off">
+             placeholder="Search (or browse): flat code (e.g. E-10) or lessee name" autocomplete="off">
       <input type="hidden" name="lessee" id="id_lessee">
       <div id="lesseeResults" class="typeahead-panel" hidden></div>
     </p>
@@ -76,42 +92,115 @@
   </form>
 </div>
 
-<!-- (Owner/Lessee history tables — keep your existing blocks here) -->
+<!-- OWNER HISTORY -->
+<div class="card">
+  {% with own_hist=flat.ownerships.all %}
+  <div class="card-head">
+    <h2 class="card-title">Owner history ({{ own_hist|length }})</h2>
+  </div>
+  <table class="table">
+    <thead>
+      <tr><th>Owner</th><th>From</th><th>To</th><th>Status</th><th style="width:180px">Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for o in own_hist %}
+      <tr>
+        <td><a href="/people/owners/{{ o.owner.pk }}/edit/">{{ o.owner.name }}</a></td>
+        <td>{{ o.start_date }}</td>
+        <td>{{ o.end_date|default:"present" }}</td>
+        <td>{% if not o.end_date %}<span class="badge ok">Active</span>{% else %}<span class="badge muted">Ended</span>{% endif %}</td>
+        <td>
+          <a class="btn ghost sm" href="/people/owners/{{ o.owner.pk }}/edit/">Edit</a>
+          <a class="btn sm" href="/people/owners/{{ o.owner.pk }}/pdf/?dl=1" download>PDF</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="muted">No ownership records yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endwith %}
+</div>
 
+<!-- LESSEE HISTORY -->
+<div class="card">
+  {% with ten_hist=flat.tenancies.all %}
+  <div class="card-head">
+    <h2 class="card-title">Lessee history ({{ ten_hist|length }})</h2>
+  </div>
+  <table class="table">
+    <thead>
+      <tr><th>Lessee</th><th>From</th><th>To</th><th>Status</th><th style="width:180px">Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for t in ten_hist %}
+      <tr>
+        <td><a href="/people/lessees/{{ t.lessee.pk }}/edit/">{{ t.lessee.name }}</a></td>
+        <td>{{ t.start_date }}</td>
+        <td>{{ t.end_date|default:"present" }}</td>
+        <td>{% if not t.end_date %}<span class="badge info">Active</span>{% else %}<span class="badge muted">Ended</span>{% endif %}</td>
+        <td>
+          <a class="btn ghost sm" href="/people/lessees/{{ t.lessee.pk }}/edit/">Edit</a>
+          <a class="btn sm" href="/people/lessees/{{ t.lessee.pk }}/pdf/?dl=1" download>PDF</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="muted">No tenancy records yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endwith %}
+</div>
+
+<!-- Type-ahead JS -->
 <script>
 (function () {
   function debounce(fn, ms){ let t; return function(){ clearTimeout(t); t=setTimeout(()=>fn.apply(this, arguments), ms); }; }
-  function wireTypeahead(inputId, hiddenId, panelId, endpoint){
-    var box=document.getElementById(inputId), hid=document.getElementById(hiddenId), panel=document.getElementById(panelId);
-    if(!box||!hid||!panel) return;
 
-    function clearPanel(){ panel.innerHTML=""; panel.hidden=true; }
+  function wireTypeahead(inputId, hiddenId, panelId, endpoint){
+    const box   = document.getElementById(inputId);
+    const hid   = document.getElementById(hiddenId);
+    const panel = document.getElementById(panelId);
+    if (!box || !hid || !panel) return;
+
+    function clearPanel(){ panel.innerHTML = ""; panel.hidden = true; }
     function render(items){
-      panel.innerHTML = items.map(function(it){
-        return '<button type="button" class="btn ghost sm typeahead-item" data-id="'+it.id+'" data-label="'+it.label.replace(/"/g,'&quot;')+'">'+it.label+'</button>';
-      }).join("");
-      panel.hidden = items.length===0;
-      panel.querySelectorAll('.typeahead-item').forEach(function(btn){
-        btn.addEventListener('click', function(){
-          hid.value = this.getAttribute('data-id');
-          box.value = this.getAttribute('data-label');
+      panel.innerHTML = (items||[]).map(it =>
+        `<button type="button" class="btn ghost sm typeahead-item"
+                 data-id="${it.id}" data-label="${it.label.replace(/"/g,'&quot;')}">${it.label}</button>`
+      ).join("");
+      panel.hidden = items.length === 0;
+      panel.querySelectorAll('.typeahead-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          hid.value = btn.getAttribute('data-id');
+          box.value = btn.getAttribute('data-label');
           clearPanel();
         });
       });
     }
-    var run = debounce(function(){
-      var q = box.value.trim();
-      fetch(endpoint + (q ? ("?q=" + encodeURIComponent(q)) : ""))
-        .then(function(r){ return r.json(); })
-        .then(function(d){ render(d.results || []); })
-        .catch(function(){ clearPanel(); });
+
+    function fetchAll(){
+      fetch(endpoint)
+        .then(r => r.json()).then(d => render(d.results || []))
+        .catch(() => clearPanel());
+    }
+
+    const fetchFiltered = debounce(() => {
+      const q = (box.value || "").trim();
+      if (!q) { fetchAll(); return; }
+      fetch(`${endpoint}?q=${encodeURIComponent(q)}`)
+        .then(r => r.json()).then(d => {
+          if (!d.results || d.results.length === 0) { fetchAll(); return; }
+          render(d.results);
+        })
+        .catch(() => clearPanel());
     }, 200);
 
-    // Show ALL on focus (q empty) + also allow filtering as user types
-    box.addEventListener('focus', run);
-    box.addEventListener('input', run);
-    box.addEventListener('blur', function(){ setTimeout(clearPanel, 150); });
+    box.addEventListener('focus', fetchAll);
+    box.addEventListener('input', fetchFiltered);
+    box.addEventListener('blur', () => setTimeout(clearPanel, 150));
   }
+
   wireTypeahead('ownerSearch',  'id_owner',  'ownerResults',  '/people/api/owners');
   wireTypeahead('lesseeSearch', 'id_lessee', 'lesseeResults', '/people/api/lessees');
 })();
@@ -121,6 +210,7 @@
 .typeahead-panel{margin-top:6px;border:1px solid var(--line);border-radius:10px;padding:8px;background:#0b1423;max-height:260px;overflow:auto}
 .typeahead-item{display:block;width:100%;text-align:left;margin:4px 0}
 .filter-input{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:#0b1423;color:var(--ink)}
+.gobtn.danger{border-color:var(--danger);color:var(--danger)}
 </style>
 
 {% endblock %}
