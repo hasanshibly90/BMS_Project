@@ -1,10 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
+
 <div class="page-head">
-  <h1 class="h1">Occupancy for {{ flat.unit }}-{{ flat.floor|stringformat:"02d" }}</h1>
-  <div class="sub">Assign or end the current Owner / Lessee</div>
+  <h1 class="h1">Occupancy — {{ flat.unit }}-{{ flat.floor|stringformat:"02d" }}</h1>
+  <div class="sub">Assign or end the current Owner / Lessee and review full history for this flat</div>
 </div>
 
+<!-- OWNER PANEL -->
 <div class="card">
   <div class="card-head">
     <h2 class="card-title">Owner</h2>
@@ -14,12 +16,12 @@
   {% if active_owner %}
     <p><strong>{{ active_owner.owner.name }}</strong></p>
     <p class="muted">From {{ active_owner.start_date }} to {{ active_owner.end_date|default:"present" }}</p>
-    <form method="post" action="{% url 'flats:end_owner' flat.pk %}">{% csrf_token %}
+    <form method="post" action="{% url 'flats:end_owner' flat.pk %}">
+      {% csrf_token %}
       <button class="btn ghost" type="submit">End owner now</button>
     </form>
+    <hr style="border-color:var(--line);margin:14px 0">
   {% endif %}
-
-  <hr style="border-color:var(--line);margin:14px 0">
 
   <form method="post" action="{% url 'flats:assign_owner' flat.pk %}" class="form">
     {% csrf_token %}
@@ -33,6 +35,7 @@
   </form>
 </div>
 
+<!-- LESSEE PANEL -->
 <div class="card">
   <div class="card-head">
     <h2 class="card-title">Lessee</h2>
@@ -42,12 +45,12 @@
   {% if active_lessee %}
     <p><strong>{{ active_lessee.lessee.name }}</strong></p>
     <p class="muted">From {{ active_lessee.start_date }} to {{ active_lessee.end_date|default:"present" }}</p>
-    <form method="post" action="{% url 'flats:end_lessee' flat.pk %}">{% csrf_token %}
+    <form method="post" action="{% url 'flats:end_lessee' flat.pk %}">
+      {% csrf_token %}
       <button class="btn ghost" type="submit">End lessee now</button>
     </form>
+    <hr style="border-color:var(--line);margin:14px 0">
   {% endif %}
-
-  <hr style="border-color:var(--line);margin:14px 0">
 
   <form method="post" action="{% url 'flats:assign_lessee' flat.pk %}" class="form">
     {% csrf_token %}
@@ -60,4 +63,75 @@
     </div>
   </form>
 </div>
+
+<!-- OWNER HISTORY -->
+<div class="card">
+  {% with own_hist=flat.ownerships.all %}
+  <div class="card-head">
+    <h2 class="card-title">Owner history ({{ own_hist|length }})</h2>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Owner</th><th>From</th><th>To</th><th>Status</th>
+        <th style="width:180px">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in own_hist %}
+      <tr>
+        <td><a href="{% url 'people:owner_edit' o.owner.pk %}">{{ o.owner.name }}</a></td>
+        <td>{{ o.start_date }}</td>
+        <td>{{ o.end_date|default:"present" }}</td>
+        <td>
+          {% if not o.end_date %}<span class="badge ok">Active</span>{% else %}<span class="badge muted">Ended</span>{% endif %}
+        </td>
+        <td>
+          <a class="btn ghost sm" href="{% url 'people:owner_edit' o.owner.pk %}">Edit</a>
+          <a class="btn sm" href="{% url 'people:owner_pdf' o.owner.pk %}?dl=1" download>PDF</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="muted">No ownership records yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endwith %}
+</div>
+
+<!-- LESSEE HISTORY -->
+<div class="card">
+  {% with ten_hist=flat.tenancies.all %}
+  <div class="card-head">
+    <h2 class="card-title">Lessee history ({{ ten_hist|length }})</h2>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Lessee</th><th>From</th><th>To</th><th>Status</th>
+        <th style="width:180px">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in ten_hist %}
+      <tr>
+        <td><a href="{% url 'people:lessee_edit' t.lessee.pk %}">{{ t.lessee.name }}</a></td>
+        <td>{{ t.start_date }}</td>
+        <td>{{ t.end_date|default:"present" }}</td>
+        <td>
+          {% if not t.end_date %}<span class="badge info">Active</span>{% else %}<span class="badge muted">Ended</span>{% endif %}
+        </td>
+        <td>
+          <a class="btn ghost sm" href="{% url 'people:lessee_edit' t.lessee.pk %}">Edit</a>
+          <a class="btn sm" href="{% url 'people:lessee_pdf' t.lessee.pk %}?dl=1" download>PDF</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="muted">No tenancy records yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endwith %}
+</div>
+
 {% endblock %}
