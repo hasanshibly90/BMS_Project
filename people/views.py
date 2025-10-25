@@ -1,7 +1,8 @@
+import re
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.shortcuts import get_object_or_404
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.db.models import Q
 from django.utils import timezone
 from django.contrib import messages
@@ -11,40 +12,32 @@ from urllib.parse import quote
 from .models import Owner, Lessee, Ownership, Tenancy
 from .forms import OwnerForm, LesseeForm
 
-
 # ───────────────────────── helpers ─────────────────────────
 
 def _safe(txt):
-    """ReportLab-safe (latin-1) text to avoid Unicode crashes without a TTF."""
     return (str(txt or "").encode("latin-1", "replace")).decode("latin-1")
-
 
 def _draw_label_value(c, x, y, label, value, label_w=120):
     c.setFont("Helvetica-Bold", 10); c.drawString(x, y, _safe(label))
     c.setFont("Helvetica", 10); c.drawString(x + label_w, y, _safe(value))
 
-
 def _try_image(c, path, x, y, w, h):
-    """Draw image if path exists; fail silently otherwise."""
     try:
         if path:
             c.drawImage(path, x, y, width=w, height=h, preserveAspectRatio=True, anchor='n')
     except Exception:
         pass
 
-
 def _file_path(instance, attr_name):
-    """Return a safe .path for Image/FileField (or None). Avoids ValueError when empty."""
     f = getattr(instance, attr_name, None)
     if not f:
         return None
     try:
-        if getattr(f, "name", None):  # only when a real file is present
+        if getattr(f, "name", None):
             return f.path
     except (ValueError, FileNotFoundError, OSError):
         return None
     return None
-
 
 # ───────────────────────── Owners ─────────────────────────
 
@@ -65,20 +58,17 @@ class OwnerListView(ListView):
         ctx["q"] = (self.request.GET.get("q") or "").strip()
         return ctx
 
-
 class OwnerCreateView(CreateView):
     model = Owner
     form_class = OwnerForm
     template_name = "form.html"
     success_url = reverse_lazy("people:owners")
 
-
 class OwnerUpdateView(UpdateView):
     model = Owner
     form_class = OwnerForm
     template_name = "form.html"
     success_url = reverse_lazy("people:owners")
-
 
 class OwnerDeleteView(DeleteView):
     model = Owner
@@ -98,13 +88,10 @@ class OwnerDeleteView(DeleteView):
         messages.success(request, f"Deleted owner '{name}'. Removed {count} ownership record(s).")
         return response
 
-
 def owner_pdf(request, pk):
-    """Owner profile PDF (download with ?dl=1, otherwise inline)."""
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
-
     obj = get_object_or_404(Owner, pk=pk)
 
     dl = (request.GET.get("dl") or request.GET.get("download") or "").lower()
@@ -116,22 +103,14 @@ def owner_pdf(request, pk):
     resp["Content-Disposition"] = f"{disposition}; filename*=UTF-8''{quote(filename)}"
 
     c = canvas.Canvas(resp, pagesize=A4)
-    W, H = A4
-    margin = 18 * mm
-    x = margin
-    y = H - margin
-
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(x, y, "OWNER PROFILE")
-    c.setFont("Helvetica", 9)
-    c.drawRightString(W - margin, y, timezone.now().strftime("%d-%b-%Y %H:%M"))
+    W, H = A4; margin = 18 * mm; x = margin; y = H - margin
+    c.setFont("Helvetica-Bold", 16); c.drawString(x, y, "OWNER PROFILE")
+    c.setFont("Helvetica", 9); c.drawRightString(W - margin, y, timezone.now().strftime("%d-%b-%Y %H:%M"))
     y -= 14 * mm
 
     photo_path = _file_path(obj, "photo")
     nid_path   = _file_path(obj, "nid_image")
-
-    right_w = 38 * mm
-    right_x = W - margin - right_w
+    right_w = 38 * mm; right_x = W - margin - right_w
     _try_image(c, photo_path, right_x, y - 40 * mm, right_w, 40 * mm)
     _try_image(c, nid_path,   right_x, y - 88 * mm, right_w, 40 * mm)
 
@@ -141,10 +120,8 @@ def owner_pdf(request, pk):
     _draw_label_value(c, x, y, "Email:", obj.email); y -= line
     _draw_label_value(c, x, y, "Address:", obj.address); y -= line
 
-    y -= 5 * mm
-    c.setFont("Helvetica-Bold", 11); c.drawString(x, y, "Ownership history")
-    y -= 6 * mm
-    c.setFont("Helvetica", 10)
+    y -= 5 * mm; c.setFont("Helvetica-Bold", 11); c.drawString(x, y, "Ownership history")
+    y -= 6 * mm; c.setFont("Helvetica", 10)
     owns = Ownership.objects.filter(owner=obj).order_by("-start_date")
     if not owns:
         c.drawString(x, y, "(no ownership records)"); y -= line
@@ -154,11 +131,8 @@ def owner_pdf(request, pk):
         c.drawString(x, y, _safe(f"{flat} | {span}")); y -= line
         if y < margin + 20 * mm:
             c.showPage(); y = H - margin
-
-    c.showPage()
-    c.save()
+    c.showPage(); c.save()
     return resp
-
 
 # ───────────────────────── Lessees ─────────────────────────
 
@@ -179,20 +153,17 @@ class LesseeListView(ListView):
         ctx["q"] = (self.request.GET.get("q") or "").strip()
         return ctx
 
-
 class LesseeCreateView(CreateView):
     model = Lessee
     form_class = LesseeForm
     template_name = "form.html"
     success_url = reverse_lazy("people:lessees")
 
-
 class LesseeUpdateView(UpdateView):
     model = Lessee
     form_class = LesseeForm
     template_name = "form.html"
     success_url = reverse_lazy("people:lessees")
-
 
 class LesseeDeleteView(DeleteView):
     model = Lessee
@@ -212,13 +183,10 @@ class LesseeDeleteView(DeleteView):
         messages.success(request, f"Deleted lessee '{name}'. Removed {count} tenancy record(s).")
         return response
 
-
 def lessee_pdf(request, pk):
-    """Lessee profile PDF (download with ?dl=1, otherwise inline)."""
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
-
     obj = get_object_or_404(Lessee, pk=pk)
 
     dl = (request.GET.get("dl") or request.GET.get("download") or "").lower()
@@ -230,22 +198,14 @@ def lessee_pdf(request, pk):
     resp["Content-Disposition"] = f"{disposition}; filename*=UTF-8''{quote(filename)}"
 
     c = canvas.Canvas(resp, pagesize=A4)
-    W, H = A4
-    margin = 18 * mm
-    x = margin
-    y = H - margin
-
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(x, y, "LESSEE PROFILE")
-    c.setFont("Helvetica", 9)
-    c.drawRightString(W - margin, y, timezone.now().strftime("%d-%b-%Y %H:%M"))
+    W, H = A4; margin = 18 * mm; x = margin; y = H - margin
+    c.setFont("Helvetica-Bold", 16); c.drawString(x, y, "LESSEE PROFILE")
+    c.setFont("Helvetica", 9); c.drawRightString(W - margin, y, timezone.now().strftime("%d-%b-%Y %H:%M"))
     y -= 14 * mm
 
     photo_path = _file_path(obj, "photo")
     nid_path   = _file_path(obj, "nid_image")
-
-    right_w = 38 * mm
-    right_x = W - margin - right_w
+    right_w = 38 * mm; right_x = W - margin - right_w
     _try_image(c, photo_path, right_x, y - 40 * mm, right_w, 40 * mm)
     _try_image(c, nid_path,   right_x, y - 88 * mm, right_w, 40 * mm)
 
@@ -255,10 +215,8 @@ def lessee_pdf(request, pk):
     _draw_label_value(c, x, y, "Email:", obj.email); y -= line
     _draw_label_value(c, x, y, "Address:", obj.address); y -= line
 
-    y -= 5 * mm
-    c.setFont("Helvetica-Bold", 11); c.drawString(x, y, "Tenancy history")
-    y -= 6 * mm
-    c.setFont("Helvetica", 10)
+    y -= 5 * mm; c.setFont("Helvetica-Bold", 11); c.drawString(x, y, "Tenancy history")
+    y -= 6 * mm; c.setFont("Helvetica", 10)
     tens = Tenancy.objects.filter(lessee=obj).order_by("-start_date")
     if not tens:
         c.drawString(x, y, "(no tenancy records)"); y -= line
@@ -268,7 +226,67 @@ def lessee_pdf(request, pk):
         c.drawString(x, y, _safe(f"{flat} | {span}")); y -= line
         if y < margin + 20 * mm:
             c.showPage(); y = H - margin
-
-    c.showPage()
-    c.save()
+    c.showPage(); c.save()
     return resp
+
+# ───────────────────────── Type-ahead search APIs ─────────────────────────
+
+_FLAT_RE = re.compile(r'^([A-Ha-h])[-_\s]?0?(\d{1,2})$')
+
+def _active_code_for_owners(owner_ids):
+    code = {oid: None for oid in owner_ids}
+    owns = Ownership.objects.filter(owner_id__in=owner_ids, end_date__isnull=True).select_related("flat")
+    for o in owns:
+        code[o.owner_id] = f"{o.flat.unit}-{o.flat.floor:02d}"
+    return code
+
+def _active_code_for_lessees(lessee_ids):
+    code = {lid: None for lid in lessee_ids}
+    tens = Tenancy.objects.filter(lessee_id__in=lessee_ids, end_date__isnull=True).select_related("flat")
+    for t in tens:
+        code[t.lessee_id] = f"{t.flat.unit}-{t.flat.floor:02d}"
+    return code
+
+def owners_search(request):
+    """Return up to 500 owners (or filtered) with label 'FLAT - Name'."""
+    q = (request.GET.get("q") or "").strip()
+    base_qs = Owner.objects.all()
+
+    name_qs = base_qs.filter(name__icontains=q) if q else base_qs
+
+    ids_by_flat = []
+    m = _FLAT_RE.match(q.replace(" ", "")) if q else None
+    if m:
+        unit, fl = m.group(1).upper(), int(m.group(2))
+        ids_by_flat = list(
+            Ownership.objects.filter(end_date__isnull=True, flat__unit=unit, flat__floor=fl)
+            .values_list("owner_id", flat=True)
+        )
+
+    qs = (name_qs | base_qs.filter(id__in=ids_by_flat)).order_by("name").distinct()[:500]
+    id_list = list(qs.values_list("id", flat=True))
+    codes = _active_code_for_owners(id_list)
+    results = [{"id": o.id, "label": f"{(codes.get(o.id) or '—')} - {o.name}"} for o in qs]
+    return JsonResponse({"results": results})
+
+def lessees_search(request):
+    """Return up to 500 lessees (or filtered) with label 'FLAT - Name'."""
+    q = (request.GET.get("q") or "").strip()
+    base_qs = Lessee.objects.all()
+
+    name_qs = base_qs.filter(name__icontains=q) if q else base_qs
+
+    ids_by_flat = []
+    m = _FLAT_RE.match(q.replace(" ", "")) if q else None
+    if m:
+        unit, fl = m.group(1).upper(), int(m.group(2))
+        ids_by_flat = list(
+            Tenancy.objects.filter(end_date__isnull=True, flat__unit=unit, flat__floor=fl)
+            .values_list("lessee_id", flat=True)
+        )
+
+    qs = (name_qs | base_qs.filter(id__in=ids_by_flat)).order_by("name").distinct()[:500]
+    id_list = list(qs.values_list("id", flat=True))
+    codes = _active_code_for_lessees(id_list)
+    results = [{"id": l.id, "label": f"{(codes.get(l.id) or '—')} - {l.name}"} for l in qs]
+    return JsonResponse({"results": results})

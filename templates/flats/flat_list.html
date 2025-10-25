@@ -4,15 +4,18 @@
   <h1 class="h1">Flats</h1>
   <div class="sub">Filter, edit status inline, manage occupancy</div>
 </div>
+
 <div class="kpi-grid">
   <div class="kpi-card"><div class="kpi-value">{{ cnt_owner }}</div><div class="kpi-label">Owner occupied</div></div>
   <div class="kpi-card"><div class="kpi-value">{{ cnt_rented }}</div><div class="kpi-label">Rented</div></div>
   <div class="kpi-card"><div class="kpi-value">{{ cnt_vacant }}</div><div class="kpi-label">Vacant</div></div>
 </div>
+
 <div class="card">
   <div class="toolbar">
     <form method="get" class="filters">
-      <input type="text" name="q" value="{{ q }}" placeholder="Search: 7 or A or remark">
+      <!-- Updated placeholder to match new search behavior -->
+      <input type="text" name="q" value="{{ q }}" placeholder="Search: A-07 or 7 or A or remark" title="Try A-07 / A07 / A 7, floor 7, unit A, or any remark">
       <select name="floor">
         <option value="">Floor</option>
         {% for f in floors %}
@@ -46,9 +49,13 @@
         <td>{{ o.unit }}-{{ o.floor|stringformat:"02d" }}</td>
         <td>{{ o.floor }}</td>
         <td>
-          {% if o.status_hint == 'owner' %}<span class="badge ok">Owner</span>
-          {% elif o.status_hint == 'rented' %}<span class="badge info">Rented</span>
-          {% else %}<span class="badge muted">Vacant</span>{% endif %}
+          {% if o.status_hint == 'owner' %}
+            <span class="badge ok">Owner</span>
+          {% elif o.status_hint == 'rented' %}
+            <span class="badge info">Rented</span>
+          {% else %}
+            <span class="badge muted">Vacant</span>
+          {% endif %}
         </td>
         <td>{{ o.occupant_label }}</td>
         <td>{{ o.remarks }}</td>

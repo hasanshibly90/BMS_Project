@@ -25,7 +25,13 @@
 
   <form method="post" action="{% url 'flats:assign_owner' flat.pk %}" class="form">
     {% csrf_token %}
-    <p><label><strong>Owner</strong></label><br>{{ ownership_form.owner }}</p>
+    <p>
+      <label><strong>Owner</strong></label><br>
+      <input type="text" id="ownerSearch" class="filter-input"
+             placeholder="Search (or browse): flat code or owner name" autocomplete="off">
+      <input type="hidden" name="owner" id="id_owner">
+      <div id="ownerResults" class="typeahead-panel" hidden></div>
+    </p>
     <p><label><strong>Start date</strong></label><br>{{ ownership_form.start_date }}</p>
     <p><label><strong>End date (optional)</strong></label><br>{{ ownership_form.end_date }}</p>
     <div class="form-actions">
@@ -54,7 +60,13 @@
 
   <form method="post" action="{% url 'flats:assign_lessee' flat.pk %}" class="form">
     {% csrf_token %}
-    <p><label><strong>Lessee</strong></label><br>{{ tenancy_form.lessee }}</p>
+    <p>
+      <label><strong>Lessee</strong></label><br>
+      <input type="text" id="lesseeSearch" class="filter-input"
+             placeholder="Search (or browse): flat code or lessee name" autocomplete="off">
+      <input type="hidden" name="lessee" id="id_lessee">
+      <div id="lesseeResults" class="typeahead-panel" hidden></div>
+    </p>
     <p><label><strong>Start date</strong></label><br>{{ tenancy_form.start_date }}</p>
     <p><label><strong>End date (optional)</strong></label><br>{{ tenancy_form.end_date }}</p>
     <div class="form-actions">
@@ -64,74 +76,51 @@
   </form>
 </div>
 
-<!-- OWNER HISTORY -->
-<div class="card">
-  {% with own_hist=flat.ownerships.all %}
-  <div class="card-head">
-    <h2 class="card-title">Owner history ({{ own_hist|length }})</h2>
-  </div>
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Owner</th><th>From</th><th>To</th><th>Status</th>
-        <th style="width:180px">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for o in own_hist %}
-      <tr>
-        <td><a href="{% url 'people:owner_edit' o.owner.pk %}">{{ o.owner.name }}</a></td>
-        <td>{{ o.start_date }}</td>
-        <td>{{ o.end_date|default:"present" }}</td>
-        <td>
-          {% if not o.end_date %}<span class="badge ok">Active</span>{% else %}<span class="badge muted">Ended</span>{% endif %}
-        </td>
-        <td>
-          <a class="btn ghost sm" href="{% url 'people:owner_edit' o.owner.pk %}">Edit</a>
-          <a class="btn sm" href="{% url 'people:owner_pdf' o.owner.pk %}?dl=1" download>PDF</a>
-        </td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="5" class="muted">No ownership records yet.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endwith %}
-</div>
+<!-- (Owner/Lessee history tables — keep your existing blocks here) -->
 
-<!-- LESSEE HISTORY -->
-<div class="card">
-  {% with ten_hist=flat.tenancies.all %}
-  <div class="card-head">
-    <h2 class="card-title">Lessee history ({{ ten_hist|length }})</h2>
-  </div>
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Lessee</th><th>From</th><th>To</th><th>Status</th>
-        <th style="width:180px">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for t in ten_hist %}
-      <tr>
-        <td><a href="{% url 'people:lessee_edit' t.lessee.pk %}">{{ t.lessee.name }}</a></td>
-        <td>{{ t.start_date }}</td>
-        <td>{{ t.end_date|default:"present" }}</td>
-        <td>
-          {% if not t.end_date %}<span class="badge info">Active</span>{% else %}<span class="badge muted">Ended</span>{% endif %}
-        </td>
-        <td>
-          <a class="btn ghost sm" href="{% url 'people:lessee_edit' t.lessee.pk %}">Edit</a>
-          <a class="btn sm" href="{% url 'people:lessee_pdf' t.lessee.pk %}?dl=1" download>PDF</a>
-        </td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="5" class="muted">No tenancy records yet.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endwith %}
-</div>
+<script>
+(function () {
+  function debounce(fn, ms){ let t; return function(){ clearTimeout(t); t=setTimeout(()=>fn.apply(this, arguments), ms); }; }
+  function wireTypeahead(inputId, hiddenId, panelId, endpoint){
+    var box=document.getElementById(inputId), hid=document.getElementById(hiddenId), panel=document.getElementById(panelId);
+    if(!box||!hid||!panel) return;
+
+    function clearPanel(){ panel.innerHTML=""; panel.hidden=true; }
+    function render(items){
+      panel.innerHTML = items.map(function(it){
+        return '<button type="button" class="btn ghost sm typeahead-item" data-id="'+it.id+'" data-label="'+it.label.replace(/"/g,'&quot;')+'">'+it.label+'</button>';
+      }).join("");
+      panel.hidden = items.length===0;
+      panel.querySelectorAll('.typeahead-item').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          hid.value = this.getAttribute('data-id');
+          box.value = this.getAttribute('data-label');
+          clearPanel();
+        });
+      });
+    }
+    var run = debounce(function(){
+      var q = box.value.trim();
+      fetch(endpoint + (q ? ("?q=" + encodeURIComponent(q)) : ""))
+        .then(function(r){ return r.json(); })
+        .then(function(d){ render(d.results || []); })
+        .catch(function(){ clearPanel(); });
+    }, 200);
+
+    // Show ALL on focus (q empty) + also allow filtering as user types
+    box.addEventListener('focus', run);
+    box.addEventListener('input', run);
+    box.addEventListener('blur', function(){ setTimeout(clearPanel, 150); });
+  }
+  wireTypeahead('ownerSearch',  'id_owner',  'ownerResults',  '/people/api/owners');
+  wireTypeahead('lesseeSearch', 'id_lessee', 'lesseeResults', '/people/api/lessees');
+})();
+</script>
+
+<style>
+.typeahead-panel{margin-top:6px;border:1px solid var(--line);border-radius:10px;padding:8px;background:#0b1423;max-height:260px;overflow:auto}
+.typeahead-item{display:block;width:100%;text-align:left;margin:4px 0}
+.filter-input{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:#0b1423;color:var(--ink)}
+</style>
 
 {% endblock %}
