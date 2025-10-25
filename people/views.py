@@ -13,12 +13,16 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from .models import Owner, Lessee, Ownership, Tenancy
 from .forms import OwnerForm, LesseeForm
 
-# ───────────────── helpers ─────────────────
+# ───────────────────────── helpers ─────────────────────────
 
 def _safe(txt) -> str:
+    """ReportLab-safe (latin-1) text to avoid Unicode crashes without a TTF."""
     return (str(txt or "")).encode("latin-1", "replace").decode("latin-1")
 
 def _file_path(instance, attr_name: str):
+    """
+    Return a safe .path for Image/FileField (or None), avoiding ValueError when empty.
+    """
     f = getattr(instance, attr_name, None)
     if not f:
         return None
@@ -29,7 +33,7 @@ def _file_path(instance, attr_name: str):
         return None
     return None
 
-# ───────────────── Owner pages ─────────────────
+# ───────────────────────── Owners (HTML) ─────────────────────────
 
 class OwnerListView(ListView):
     model = Owner
@@ -70,7 +74,7 @@ class OwnerDeleteView(DeleteView):
         ctx["ownership_count"] = Ownership.objects.filter(owner=self.object).count()
         return ctx
 
-    def delete(self, request, *args, **kwargs):
+    def delete(self, request: HttpRequest, *args, **kwargs):
         self.object = self.get_object()
         nm = self.object.name
         cnt = Ownership.objects.filter(owner=self.object).count()
@@ -79,6 +83,7 @@ class OwnerDeleteView(DeleteView):
         return resp
 
 def owner_pdf(request: HttpRequest, pk: int) -> HttpResponse:
+    """Owner profile PDF (download with ?dl=1; inline otherwise)."""
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
@@ -115,7 +120,8 @@ def owner_pdf(request: HttpRequest, pk: int) -> HttpResponse:
     c.drawString(x, y, _safe(f"Email: {obj.email}")); y -= line
     c.drawString(x, y, _safe(f"Address: {obj.address}")); y -= line
 
-    y -= 6 * mm; c.setFont("Helvetica-Bold", 11); c.drawString(x, y, "Ownership history"); y -= 6 * mm; c.setFont("Helvetica", 10)
+    y -= 6 * mm; c.setFont("Helvetica-Bold", 11); c.drawString(x, y, "Ownership history")
+    y -= 6 * mm; c.setFont("Helvetica", 10)
     rows = Ownership.objects.filter(owner=obj).select_related("flat").order_by("-start_date")
     if not rows:
         c.drawString(x, y, "(no ownership records)")
@@ -126,7 +132,7 @@ def owner_pdf(request: HttpRequest, pk: int) -> HttpResponse:
     c.showPage(); c.save()
     return resp
 
-# ─────────────── Lessee pages ───────────────
+# ───────────────────────── Lessees (HTML) ─────────────────────────
 
 class LesseeListView(ListView):
     model = Lessee
@@ -176,6 +182,7 @@ class LesseeDeleteView(DeleteView):
         return resp
 
 def lessee_pdf(request: HttpRequest, pk: int) -> HttpResponse:
+    """Lessee profile PDF (download with ?dl=1; inline otherwise)."""
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
@@ -203,12 +210,14 @@ def lessee_pdf(request: HttpRequest, pk: int) -> HttpResponse:
     if nid_path:   c.drawImage(nid_path,   right_x, y - 88 * mm, width=right_w, height=40 * mm, preserveAspectRatio=True)
 
     line = 8 * mm
-    _draw_label_value(c, x, y, "Name:", obj.name); y -= line
-    _draw_label_value(c, x, y, "Phone:", obj.phone); y -= line
-    _draw_label_value(c, x, y, "Email:", obj.email); y -= line
-    _draw_label_value(c, x, y, "Address:", obj.address); y -= line
+    c.setFont("Helvetica-Bold", 11); c.drawString(x, y, "Details"); y -= 6 * mm; c.setFont("Helvetica", 10)
+    c.drawString(x, y, _safe(f"Name: {obj.name}")); y -= line
+    c.drawString(x, y, _safe(f"Phone: {obj.phone}")); y -= line
+    c.drawString(x, y, _safe(f"Email: {obj.email}")); y -= line
+    c.drawString(x, y, _safe(f"Address: {obj.address}")); y -= line
 
-    y -= 6 * mm; c.setFont("Helvetica-Bold", 11); c.drawString(x, y, "Tenancy history"); y -= 6 * mm; c.setFont("Helvetica", 10)
+    y -= 6 * mm; c.setFont("Helvetica-Bold", 11); c.drawString(x, y, "Tenancy history")
+    y -= 6 * mm; c.setFont("Helvetica", 10)
     rows = Tenancy.objects.filter(lessee=obj).select_related("flat").order_by("-start_date")
     if not rows:
         c.drawString(x, y, "(no tenancy records)")
@@ -219,7 +228,7 @@ def lessee_pdf(request: HttpRequest, pk: int) -> HttpResponse:
     c.showPage(); c.save()
     return resp
 
-# ─────────────── Search APIs (type-ahead) ───────────────
+# ───────────────────────── Search APIs for Occupancy type-ahead ─────────────────────────
 
 _FLAT_RE = re.compile(r"^([A-Ha-h])[-_\s]?0?(\d{1,2})$")
 
@@ -238,47 +247,117 @@ def _active_code_for_lessees(lessee_ids):
     return code
 
 def owners_search(request: HttpRequest) -> JsonResponse:
+    """
+    Return up to 500 owners.
+    * Empty q  -> all owners
+    * Name q   -> filter by name/phone
+    * Flat q   -> active owner on that flat; if none, include the latest owner on that flat.
+                  If still none, fall back to ALL owners.
+    Labels: 'E-10 - Ashikur Rahman' or '— - Name'
+    """
     q = (request.GET.get("q") or "").strip()
     base = Owner.objects.all()
+
     if not q:
         qs = base.order_by("name")[:500]
     else:
         name_qs = base.filter(Q(name__icontains=q) | Q(phone__icontains=q))
-        ids_by_flat = []
+
+        ids_by_flat_active = []
+        ids_by_flat_latest = []
         m = _FLAT_RE.match(q.replace(" ", ""))
         if m:
-            u, f = m.group(1).upper(), int(m.group(2))
-            ids_by_flat = list(
-                Ownership.objects.filter(end_date__isnull=True, flat__unit=u, flat__floor=f)
+            unit, fl = m.group(1).upper(), int(m.group(2))
+            # active owner
+            ids_by_flat_active = list(
+                Ownership.objects.filter(end_date__isnull=True, flat__unit=unit, flat__floor=fl)
                 .values_list("owner_id", flat=True)
             )
-        qs = (name_qs | base.filter(id__in=ids_by_flat)).order_by("name").distinct()
+            if not ids_by_flat_active:
+                # latest historical owner
+                latest = (
+                    Ownership.objects.filter(flat__unit=unit, flat__floor=fl)
+                    .order_by("-start_date", "-id")
+                    .values_list("owner_id", flat=True)[:1]
+                )
+                ids_by_flat_latest = list(latest)
+
+        owner_ids_from_flat = set(ids_by_flat_active) | set(ids_by_flat_latest)
+        qs = (name_qs | base.filter(id__in=owner_ids_from_flat)).order_by("name").distinct()
         if not qs.exists():
             qs = base.order_by("name")
+
     ids = list(qs.values_list("id", flat=True))
     codes = _active_code_for_owners(ids)
-    data = [{"id": oid, "label": f"{(codes.get(oid) or '—')} - {name}"} for oid, name in qs.values_list("id", "name")[:500]]
-    return JsonResponse({"results": data})
+
+    results = []
+    forced_code = None
+    m2 = _FLAT_RE.match(q.replace(" ", "")) if q else None
+    if m2:
+        forced_code = f"{m2.group(1).upper()}-{int(m2.group(2)):02d}"
+
+    for oid, name in qs.values_list("id", "name")[:500]:
+        label_code = codes.get(oid) or "—"
+        if forced_code:
+            if 'owner_ids_from_flat' in locals() and oid in owner_ids_from_flat:
+                label_code = forced_code
+        results.append({"id": oid, "label": f"{label_code} - {name}"})
+
+    return JsonResponse({"results": results})
 
 def lessees_search(request: HttpRequest) -> JsonResponse:
+    """
+    Return up to 500 lessees.
+    * Empty q  -> all lessees
+    * Name q   -> filter by name/phone
+    * Flat q   -> active lessee on that flat; if none, include the latest lessee on that flat.
+                  If still none, fall back to ALL lessees.
+    Labels: 'E-10 - John Tenant' or '— - Name'
+    """
     q = (request.GET.get("q") or "").strip()
     base = Lessee.objects.all()
+
     if not q:
         qs = base.order_by("name")[:500]
     else:
         name_qs = base.filter(Q(name__icontains=q) | Q(phone__icontains=q))
-        ids_by_flat = []
+
+        ids_by_flat_active = []
+        ids_by_flat_latest = []
         m = _FLAT_RE.match(q.replace(" ", ""))
         if m:
-            u, f = m.group(1).upper(), int(m.group(2))
-            ids_by_flat = list(
-                Tenancy.objects.filter(end_date__isnull=True, flat__unit=u, flat__floor=f)
+            unit, fl = m.group(1).upper(), int(m.group(2))
+            ids_by_flat_active = list(
+                Tenancy.objects.filter(end_date__isnull=True, flat__unit=unit, flat__floor=fl)
                 .values_list("lessee_id", flat=True)
             )
-        qs = (name_qs | base.filter(id__in=ids_by_flat)).order_by("name").distinct()
+            if not ids_by_flat_active:
+                latest = (
+                    Tenancy.objects.filter(flat__unit=unit, flat__floor=fl)
+                    .order_by("-start_date", "-id")
+                    .values_list("lessee_id", flat=True)[:1]
+                )
+                ids_by_flat_latest = list(latest)
+
+        lessee_ids_from_flat = set(ids_by_flat_active) | set(ids_by_flat_latest)
+        qs = (name_qs | base.filter(id__in=lessee_ids_from_flat)).order_by("name").distinct()
         if not qs.exists():
             qs = base.order_by("name")
+
     ids = list(qs.values_list("id", flat=True))
     codes = _active_code_for_lessees(ids)
-    data = [{"id": lid, "label": f"{(codes.get(lid) or '—')} - {name}"} for lid, name in qs.values_list("id", "name")[:500]]
-    return JsonResponse({"results": data})
+
+    results = []
+    forced_code = None
+    m2 = _FLAT_RE.match(q.replace(" ", "")) if q else None
+    if m2:
+        forced_code = f"{m2.group(1).upper()}-{int(m2.group(2)):02d}"
+
+    for lid, name in qs.values_list("id", "name")[:500]:
+        label_code = codes.get(lid) or "—"
+        if forced_code:
+            if 'lessee_ids_from_flat' in locals() and lid in lessee_ids_from_flat:
+                label_code = forced_code
+        results.append({"id": lid, "label": f"{label_code} - {name}"})
+
+    return JsonResponse({"results": results})
