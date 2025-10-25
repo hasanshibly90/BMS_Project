@@ -15,10 +15,7 @@
     {% else %}
       <span class="badge muted">None</span>
     {% endif %}
-    <span class="badge muted">
-      Current:
-      {% if active_owner %}{{ active_owner.owner.name }}{% else %}None{% endif %}
-    </span>
+    <span class="badge">Current: {% if active_owner %}{{ active_owner.owner.name }}{% else %}None{% endif %}</span>
   </div>
 
   {% if active_owner %}
@@ -33,8 +30,7 @@
 
   <form method="post" action="{% url 'flats:assign_owner' flat.pk %}" class="form">
     {% csrf_token %}
-    <p>
-      <label><strong>Owner</strong></label><br>
+    <p><label><strong>Owner</strong></label><br>
       <input type="text" id="ownerSearch" class="filter-input"
              placeholder="Search (or browse): flat code (e.g. E-10) or owner name" autocomplete="off">
       <input type="hidden" name="owner" id="id_owner">
@@ -58,10 +54,7 @@
     {% else %}
       <span class="badge muted">None</span>
     {% endif %}
-    <span class="badge muted">
-      Current:
-      {% if active_lessee %}{{ active_lessee.lessee.name }}{% else %}None{% endif %}
-    </span>
+    <span class="badge">Current: {% if active_lessee %}{{ active_lessee.lessee.name }}{% else %}None{% endif %}</span>
   </div>
 
   {% if active_lessee %}
@@ -72,12 +65,12 @@
       <button class="btn gobtn danger" type="submit">End lessee now</button>
     </form>
     <hr style="border-color:var(--line);margin:14px 0">
+  </div>
   {% endif %}
 
   <form method="post" action="{% url 'flats:assign_lessee' flat.pk %}" class="form">
     {% csrf_token %}
-    <p>
-      <label><strong>Lessee</strong></label><br>
+    <p><label><strong>Lessee</strong></label><br>
       <input type="text" id="lesseeSearch" class="filter-input"
              placeholder="Search (or browse): flat code (e.g. E-10) or lessee name" autocomplete="off">
       <input type="hidden" name="lessee" id="id_lessee">
@@ -100,18 +93,25 @@
   </div>
   <table class="table">
     <thead>
-      <tr><th>Owner</th><th>From</th><th>To</th><th>Status</th><th style="width:180px">Actions</th></tr>
+      <tr>
+        <th>Owner</th><th>From</th><th>To</th><th>Status</th>
+        <th style="width:260px">Actions</th>
+      </tr>
     </thead>
     <tbody>
       {% for o in own_hist %}
       <tr>
-        <td><a href="/people/owners/{{ o.owner.pk }}/edit/">{{ o.owner.name }}</a></td>
+        <td><a href="{% url 'people:owner_edit' o.owner.pk %}">{{ o.owner.name }}</a></td>
         <td>{{ o.start_date }}</td>
         <td>{{ o.end_date|default:"present" }}</td>
-        <td>{% if not o.end_date %}<span class="badge ok">Active</span>{% else %}<span class="badge muted">Ended</span>{% endif %}</td>
         <td>
-          <a class="btn ghost sm" href="/people/owners/{{ o.owner.pk }}/edit/">Edit</a>
-          <a class="btn sm" href="/people/owners/{{ o.owner.pk }}/pdf/?dl=1" download>PDF</a>
+          {% if not o.end_date %}<span class="badge ok">Active</span>
+          {% else %}<span class="badge muted">Ended</span>{% endif %}
+        </td>
+        <td>
+          <a class="btn ghost sm" href="{% url 'people:owner_edit' o.owner.pk %}">Edit</a>
+          <a class="btn ghost danger sm" href="{% url 'people:owner_delete' o.owner.pk %}">Delete</a>
+          <a class="btn sm" href="{% url 'people:owner_pdf' o.owner.pk %}?dl=1" download>PDF</a>
         </td>
       </tr>
       {% empty %}
@@ -124,24 +124,31 @@
 
 <!-- LESSEE HISTORY -->
 <div class="card">
-  {% with ten_hist=flat.tenancies.all %}
+  {% with ten_hist=flat.tenancies all %}
   <div class="card-head">
     <h2 class="card-title">Lessee history ({{ ten_hist|length }})</h2>
   </div>
   <table class="table">
     <thead>
-      <tr><th>Lessee</th><th>From</th><th>To</th><th>Status</th><th style="width:180px">Actions</th></tr>
+      <tr>
+        <th>Lessee</th><th>From</th><th>To</th><th>Status</th>
+        <th style="width:260px">Actions</th>
+      </tr>
     </thead>
     <tbody>
       {% for t in ten_hist %}
       <tr>
-        <td><a href="/people/lessees/{{ t.lessee.pk }}/edit/">{{ t.lessee.name }}</a></td>
+        <td><a href="{% url 'people:lessee_edit' t.lessee.pk %}">{{ t.lessee.name }}</a></td>
         <td>{{ t.start_date }}</td>
         <td>{{ t.end_date|default:"present" }}</td>
-        <td>{% if not t.end_date %}<span class="badge info">Active</span>{% else %}<span class="badge muted">Ended</span>{% endif %}</td>
         <td>
-          <a class="btn ghost sm" href="/people/lessees/{{ t.lessee.pk }}/edit/">Edit</a>
-          <a class="btn sm" href="/people/lessees/{{ t.lessee.pk }}/pdf/?dl=1" download>PDF</a>
+          {% if not t.end_date %}<span class="badge info">Active</span>
+          {% else %}<span class="badge muted">Ended</span>{% endif %}
+        </td>
+        <td>
+          <a class="btn ghost sm" href="{% url 'people:lessee_edit' t.lessee.pk %}">Edit</a>
+          <a class="btn ghost danger sm" href="{% url 'people:lessee_delete' t.lessee.pk %}">Delete</a>
+          <a class="btn sm" href="{% url 'people:lessee_pdf' t.lessee.pk %}?dl=1" download>PDF</a>
         </td>
       </tr>
       {% empty %}
@@ -155,62 +162,56 @@
 <!-- Type-ahead JS -->
 <script>
 (function () {
-  function debounce(fn, ms){ let t; return function(){ clearTimeout(t); t=setTimeout(()=>fn.apply(this, arguments), ms); }; }
-
+  function debounce(fn, ms){ let t; return function(){ clearTimeout(t); t = setTimeout(fn, ms); }; }
   function wireTypeahead(inputId, hiddenId, panelId, endpoint){
-    const box   = document.getElementById(inputId);
-    const hid   = document.getElementById(hiddenId);
+    const box = document.getElementById(inputId);
+    const hid = document.getElementById(hiddenId);
     const panel = document.getElementById(panelId);
     if (!box || !hid || !panel) return;
 
-    function clearPanel(){ panel.innerHTML = ""; panel.hidden = true; }
+    function clearPanel(){ panel.innerHTML = ""; panel.style.display='none'; }
     function render(items){
-      panel.innerHTML = (items||[]).map(it =>
-        `<button type="button" class="btn ghost sm typeahead-item"
-                 data-id="${it.id}" data-label="${it.label.replace(/"/g,'&quot;')}">${it.label}</button>`
+      panel.innerHTML = (items||[]).map(i =>
+        `<button type="button" class="btn ghost sm typeahead-item" data-id="${i.id}" data-label="${i.label.replace(/"/g,'&quot;')}">${i.label}</button>`
       ).join("");
-      panel.hidden = items.length === 0;
-      panel.querySelectorAll('.typeahead-item').forEach(btn => {
-        btn.addEventListener('click', () => {
-          hid.value = btn.getAttribute('data-id');
-          box.value = btn.getAttribute('data-label');
-          clearPanel();
-        });
+      panel.style.display = items && items.length ? 'block' : 'none';
+      panel.querySelectorAll('.typeahead-item').forEach(btn=>{
+        btn.onclick = ()=>{ hid.value = btn.dataset.id; box.value = btn.dataset.label; clearPanel(); };
       });
     }
-
     function fetchAll(){
-      fetch(endpoint)
-        .then(r => r.json()).then(d => render(d.results || []))
-        .catch(() => clearPanel());
+      fetch(`${endpoint}`).then(r=>r.json()).then(d=>render(d.results||[])).catch(()=>clearPanel());
     }
-
-    const fetchFiltered = debounce(() => {
-      const q = (box.value || "").trim();
-      if (!q) { fetchAll(); return; }
+    const fetchFiltered = debounce(()=> {
+      const q = (box.value||'').trim();
+      if(!q){ fetchAll(); return; }
       fetch(`${endpoint}?q=${encodeURIComponent(q)}`)
-        .then(r => r.json()).then(d => {
-          if (!d.results || d.results.length === 0) { fetchAll(); return; }
-          render(d.results);
-        })
-        .catch(() => clearPanel());
+        .then(r=>r.json())
+        .then(d=>{ if(!d.results || !d.results.length){ return fetchAll(); } render(d.results); })
+        .catch(()=>clearPanel());
     }, 200);
 
     box.addEventListener('focus', fetchAll);
     box.addEventListener('input', fetchFiltered);
-    box.addEventListener('blur', () => setTimeout(clearPanel, 150));
+    box.addEventListener('blur', ()=> setTimeout(clearPanel, 150));
   }
 
-  wireTypeahead('ownerSearch',  'id_owner',  'ownerResults',  '/people/api/owners');
-  wireTypeahead('lesseeSearch', 'id_lessee', 'lesseeResults', '/people/api/lessees');
+  wireMemcpy = wireMemcpy || null; // no-op placeholder to avoid redeclare if hot-reload
+  wireMemcpy = wireMemcpy || wireTypeaadap;
+
+  wireMemcpy('ownerSearch', 'id_owner', 'ownerResults', '/people/api/owners');
+  wireMemcpy('lesseeSearch','id_lessee','lesseeResults','/people/api/lessees');
 })();
 </script>
 
 <style>
-.typeahead-panel{margin-top:6px;border:1px solid var(--line);border-radius:10px;padding:8px;background:#0b1423;max-height:260px;overflow:auto}
-.typeahead-item{display:block;width:100%;text-align:left;margin:4px 0}
+.typeahead-item{display:inline-block;margin-right:.5rem}
+.typeahead-item + .typeahead-item{margin-left:.25rem}
+.typeahead-panel{margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:8px;display:none;background:#0b1423;max-height:260px;overflow:auto}
 .filter-input{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:#0b1423;color:var(--ink)}
-.gobtn.danger{border-color:var(--danger);color:var(--danger)}
+/* danger buttons for Delete */
+.btn.danger{background:var(--danger);color:#fff;border-color:transparent}
+.btn.ghost.danger{background:transparent;color:var(--danger);border-color:var(--danger)}
 </style>
 
 {% endblock %}
