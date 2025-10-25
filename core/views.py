@@ -11,7 +11,7 @@ from flats.models import Flat
 from people.models import Owner, Ownership, Lessee, Tenancy
 from .forms import BulkOwnersForm
 
-# Optional: if you added Parking app and Overview uses it
+# Optional: if Parking app is installed, Overview can show parking + vehicle info.
 try:
     from parking.models import ParkingSpot
 except Exception:
@@ -67,10 +67,12 @@ class BulkOwnersView(FormView):
 
     @staticmethod
     def _clean_flat_code(s: str):
-        if not s: return None
+        if not s:
+            return None
         s = str(s).strip().upper().replace(" ", "")
         m = re.match(r"^([A-H])[-_]?0?(\d{1,2})$", s)
-        if not m: return None
+        if not m:
+            return None
         unit, fl = m.group(1), int(m.group(2))
         if 1 <= fl <= 14:
             return unit, fl
@@ -106,12 +108,17 @@ class BulkOwnersView(FormView):
         flats = {(f.unit.upper(), int(f.floor)): f for f in Flat.objects.all()}
         touched = set()
 
-        counters = dict(owners_created=0, owners_updated=0, owns_created=0, owns_ended=0, status_changed=0, skipped=0)
+        counters = dict(
+            owners_created=0, owners_updated=0,
+            owns_created=0, owns_ended=0,
+            status_changed=0, skipped=0
+        )
         would = counters.copy()
 
         def tally(dst, **kw):
             for k, v in kw.items():
-                if v: dst[k] += 1
+                if v:
+                    dst[k] += 1
 
         @transaction.atomic
         def _apply():
@@ -130,6 +137,7 @@ class BulkOwnersView(FormView):
                     continue
 
                 phone_norm = self._norm_phone(phone)
+
                 # upsert owner
                 owner = None
                 qs = Owner.objects.filter(name__iexact=owner_name)
@@ -138,8 +146,6 @@ class BulkOwnersView(FormView):
                 if not owner:
                     owner = qs.first()
 
-                created_owner = False
-                updated_owner = False
                 if not owner:
                     if dry_run:
                         tally(would, owners_created=True)
@@ -157,7 +163,6 @@ class BulkOwnersView(FormView):
 
                 # end existing active ownership if owner differs
                 current = Ownership.objects.filter(flat=flat, end_date__isnull=True).order_by("-start_date").first()
-                ended = created = changed_status = False
 
                 if current and current.owner_id != owner.id:
                     if dry_run:
@@ -192,8 +197,10 @@ class BulkOwnersView(FormView):
                         continue
                     curr = Ownership.objects.filter(flat=flat, end_date__isnull=True).order_by("-start_date").first()
                     if dry_run:
-                        if curr: tally(would, owns_ended=True)
-                        if flat.status_hint != Flat.VACANT: tally(would, status_changed=True)
+                        if curr:
+                            tally(would, owns_ended=True)
+                        if flat.status_hint != Flat.VACANT:
+                            tally(would, status_changed=True)
                     else:
                         if curr:
                             curr.end_date = start_date
