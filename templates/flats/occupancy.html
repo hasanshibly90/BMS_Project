@@ -10,12 +10,8 @@
 <div class="card">
   <div class="card-head" style="gap:8px;align-items:center">
     <h2 class="card-title">Owner</h2>
-    {% if active_owner %}
-      <span class="badge ok">Active</span>
-    {% else %}
-      <span class="badge muted">None</span>
-    {% endif %}
-    <span class="badge">Current: {% if active_owner %}{{ active_owner.owner.name }}{% else %}None{% endif %}</span>
+    {% if active_owner %}<span class="badge ok">Active</span>{% else %}<span class="badge muted">None</span>{% endif %}
+    <span class="badge muted">Current: {% if active_owner %}{{ active_owner.owner.name }}{% else %}None{% endif %}</span>
   </div>
 
   {% if active_owner %}
@@ -30,11 +26,12 @@
 
   <form method="post" action="{% url 'flats:assign_owner' flat.pk %}" class="form">
     {% csrf_token %}
-    <p><label><strong>Owner</strong></label><br>
+    <p>
+      <label><strong>Owner</strong></label><br>
       <input type="text" id="ownerSearch" class="filter-input"
              placeholder="Search (or browse): flat code (e.g. E-10) or owner name" autocomplete="off">
       <input type="hidden" name="owner" id="id_owner">
-      <div id="ownerResults" class="typeahead-panel" hidden></div>
+      <div id="ownerResults" class="typeahead-panel"></div>
     </p>
     <p><label><strong>Start date</strong></label><br>{{ ownership_form.start_date }}</p>
     <p><label><strong>End date (optional)</strong></label><br>{{ ownership_form.end_date }}</p>
@@ -49,12 +46,8 @@
 <div class="card">
   <div class="card-head" style="gap:8px;align-items:center">
     <h2 class="card-title">Lessee</h2>
-    {% if active_lessee %}
-      <span class="badge info">Active</span>
-    {% else %}
-      <span class="badge muted">None</span>
-    {% endif %}
-    <span class="badge">Current: {% if active_lessee %}{{ active_lessee.lessee.name }}{% else %}None{% endif %}</span>
+    {% if active_lessee %}<span class="badge info">Active</span>{% else %}<span class="badge muted">None</span>{% endif %}
+    <span class="badge muted">Current: {% if active_lessee %}{{ active_lessee.lessee.name }}{% else %}None{% endif %}</span>
   </div>
 
   {% if active_lessee %}
@@ -62,19 +55,19 @@
     <p class="muted">From {{ active_lessee.start_date }} to {{ active_lessee.end_date|default:"present" }}</p>
     <form method="post" action="{% url 'flats:end_lessee' flat.pk %}">
       {% csrf_token %}
-      <button class="btn gobtn danger" type="submit">End lessee now</button>
+      <button class="btn ghost danger" type="submit">End lessee now</button>
     </form>
     <hr style="border-color:var(--line);margin:14px 0">
-  </div>
   {% endif %}
 
   <form method="post" action="{% url 'flats:assign_lessee' flat.pk %}" class="form">
     {% csrf_token %}
-    <p><label><strong>Lessee</strong></label><br>
+    <p>
+      <label><strong>Lessee</strong></label><br>
       <input type="text" id="lesseeSearch" class="filter-input"
              placeholder="Search (or browse): flat code (e.g. E-10) or lessee name" autocomplete="off">
       <input type="hidden" name="lessee" id="id_lessee">
-      <div id="lesseeResults" class="typeahead-panel" hidden></div>
+      <div id="lesseeResults" class="typeahead-panel"></div>
     </p>
     <p><label><strong>Start date</strong></label><br>{{ tenancy_form.start_date }}</p>
     <p><label><strong>End date (optional)</strong></label><br>{{ tenancy_form.end_date }}</p>
@@ -87,27 +80,22 @@
 
 <!-- OWNER HISTORY -->
 <div class="card">
-  {% with own_hist=flat.ownerships.all %}
   <div class="card-head">
-    <h2 class="card-title">Owner history ({{ own_hist|length }})</h2>
+    <h2 class="card-title">Owner history ({{ flat.ownerships.all|length }})</h2>
   </div>
   <table class="table">
     <thead>
       <tr>
-        <th>Owner</th><th>From</th><th>To</th><th>Status</th>
-        <th style="width:260px">Actions</th>
+        <th>Owner</th><th>From</th><th>To</th><th>Status</th><th style="width:260px">Actions</th>
       </tr>
     </thead>
     <tbody>
-      {% for o in own_hist %}
+      {% for o in flat.ownerships.all %}
       <tr>
         <td><a href="{% url 'people:owner_edit' o.owner.pk %}">{{ o.owner.name }}</a></td>
         <td>{{ o.start_date }}</td>
         <td>{{ o.end_date|default:"present" }}</td>
-        <td>
-          {% if not o.end_date %}<span class="badge ok">Active</span>
-          {% else %}<span class="badge muted">Ended</span>{% endif %}
-        </td>
+        <td>{% if not o.end_date %}<span class="badge ok">Active</span>{% else %}<span class="badge muted">Ended</span>{% endif %}</td>
         <td>
           <a class="btn ghost sm" href="{% url 'people:owner_edit' o.owner.pk %}">Edit</a>
           <a class="btn ghost danger sm" href="{% url 'people:owner_delete' o.owner.pk %}">Delete</a>
@@ -119,32 +107,26 @@
       {% endfor %}
     </tbody>
   </table>
-  {% endwith %}
 </div>
 
 <!-- LESSEE HISTORY -->
 <div class="card">
-  {% with ten_hist=flat.tenancies all %}
   <div class="card-head">
-    <h2 class="card-title">Lessee history ({{ ten_hist|length }})</h2>
+    <h2 class="card-title">Lessee history ({{ flat.tenancies.all|length }})</h2>
   </div>
   <table class="table">
     <thead>
       <tr>
-        <th>Lessee</th><th>From</th><th>To</th><th>Status</th>
-        <th style="width:260px">Actions</th>
+        <th>Lessee</th><th>From</th><th>To</th><th>Status</th><th style="width:260px">Actions</th>
       </tr>
     </thead>
     <tbody>
-      {% for t in ten_hist %}
+      {% for t in flat.tenancies.all %}
       <tr>
         <td><a href="{% url 'people:lessee_edit' t.lessee.pk %}">{{ t.lessee.name }}</a></td>
         <td>{{ t.start_date }}</td>
         <td>{{ t.end_date|default:"present" }}</td>
-        <td>
-          {% if not t.end_date %}<span class="badge info">Active</span>
-          {% else %}<span class="badge muted">Ended</span>{% endif %}
-        </td>
+        <td>{% if not t.end_date %}<span class="badge info">Active</span>{% else %}<span class="badge muted">Ended</span>{% endif %}</td>
         <td>
           <a class="btn ghost sm" href="{% url 'people:lessee_edit' t.lessee.pk %}">Edit</a>
           <a class="btn ghost danger sm" href="{% url 'people:lessee_delete' t.lessee.pk %}">Delete</a>
@@ -156,62 +138,57 @@
       {% endfor %}
     </tbody>
   </table>
-  {% endwith %}
 </div>
 
-<!-- Type-ahead JS -->
+<!-- Type-ahead JS (vanilla) -->
 <script>
 (function () {
-  function debounce(fn, ms){ let t; return function(){ clearTimeout(t); t = setTimeout(fn, ms); }; }
+  function debounce(fn, ms){ let t; return function(){ clearTimeout(t); t=setTimeout(()=>fn.apply(this, arguments), ms); }; }
+
   function wireTypeahead(inputId, hiddenId, panelId, endpoint){
-    const box = document.getElementById(inputId);
-    const hid = document.getElementById(hiddenId);
+    const box   = document.getElementById(inputId);
+    const hid   = document.getElementById(hiddenId);
     const panel = document.getElementById(panelId);
     if (!box || !hid || !panel) return;
 
     function clearPanel(){ panel.innerHTML = ""; panel.style.display='none'; }
     function render(items){
-      panel.innerHTML = (items||[]).map(i =>
-        `<button type="button" class="btn ghost sm typeahead-item" data-id="${i.id}" data-label="${i.label.replace(/"/g,'&quot;')}">${i.label}</button>`
+      panel.innerHTML = (items||[]).map(it =>
+        `<button type="button" class="btn ghost sm typeahead-item"
+                 data-id="${it.id}" data-label="${it.label.replace(/"/g,'&quot;')}">${it.label}</button>`
       ).join("");
       panel.style.display = items && items.length ? 'block' : 'none';
       panel.querySelectorAll('.typeahead-item').forEach(btn=>{
-        btn.onclick = ()=>{ hid.value = btn.dataset.id; box.value = btn.dataset.label; clearPanel(); };
+        btn.addEventListener('click', ()=>{
+          hid.value = btn.dataset.id;
+          box.value = btn.dataset.label;
+          clearPanel();
+        });
       });
     }
+
     function fetchAll(){
-      fetch(`${endpoint}`).then(r=>r.json()).then(d=>render(d.results||[])).catch(()=>clearPanel());
+      fetch(endpoint)
+        .then(r=>r.json()).then(d=>render(d.results||[]))
+        .catch(()=>clearPanel());
     }
-    const fetchFiltered = debounce(()=> {
+    const fetchFiltered = debounce(()=>{
       const q = (box.value||'').trim();
       if(!q){ fetchAll(); return; }
       fetch(`${endpoint}?q=${encodeURIComponent(q)}`)
         .then(r=>r.json())
-        .then(d=>{ if(!d.results || !d.results.length){ return fetchAll(); } render(d.results); })
+        .then(d=>{ if(!d.results || !d.results.length){ fetchAll(); return; } render(d.results); })
         .catch(()=>clearPanel());
-    }, 200);
+    },200);
 
-    box.addEventListener('focus', fetchAll);
+    box.addEventListener('focus', fetchAll);   // show all immediately
     box.addEventListener('input', fetchFiltered);
     box.addEventListener('blur', ()=> setTimeout(clearPanel, 150));
   }
 
-  wireMemcpy = wireMemcpy || null; // no-op placeholder to avoid redeclare if hot-reload
-  wireMemcpy = wireMemcpy || wireTypeaadap;
-
-  wireMemcpy('ownerSearch', 'id_owner', 'ownerResults', '/people/api/owners');
-  wireMemcpy('lesseeSearch','id_lessee','lesseeResults','/people/api/lessees');
+  wireTypeahead('ownerSearch',  'id_owner',  'ownerResults',  '/people/api/owners');
+  wireTypeahead('lesseeSearch', 'id_lessee', 'lesseeResults', '/people/api/lessees');
 })();
 </script>
-
-<style>
-.typeahead-item{display:inline-block;margin-right:.5rem}
-.typeahead-item + .typeahead-item{margin-left:.25rem}
-.typeahead-panel{margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:8px;display:none;background:#0b1423;max-height:260px;overflow:auto}
-.filter-input{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:#0b1423;color:var(--ink)}
-/* danger buttons for Delete */
-.btn.danger{background:var(--danger);color:#fff;border-color:transparent}
-.btn.ghost.danger{background:transparent;color:var(--danger);border-color:var(--danger)}
-</style>
 
 {% endblock %}
