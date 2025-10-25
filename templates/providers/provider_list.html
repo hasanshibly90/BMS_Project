@@ -7,13 +7,16 @@
 
 <div class="card">
   <div class="toolbar">
+    <!-- Filters (left) -->
     <form method="get" class="filters">
       <input type="text" name="q" value="{{ q }}" placeholder="Search: name, phone, email, address, skills">
 
       <select name="category">
         <option value="">All categories</option>
         {% for c in categories %}
-          <option value="{{ c.id }}" {% if category|stringformat:'s' == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>
+          <option value="{{ c.id }}" {% if category|stringformat:'s' == c.id|stringformat:'s' %}selected{% endif %}>
+            {{ c.name }}
+          </option>
         {% endfor %}
       </select>
 
@@ -27,7 +30,7 @@
       <a class="btn ghost" href="{% url 'providers:list' %}">Reset</a>
     </form>
 
-    <!-- Top-right action -->
+    <!-- Top-right action (right) -->
     <div class="actions" style="margin-left:auto">
       <a class="btn" href="{% url 'providers:register' %}">Add new Service Provider</a>
     </div>
@@ -36,7 +39,13 @@
   <table class="table">
     <thead>
       <tr>
-        <th>Category</th><th>Name</th><th>Phone</th><th>Email</th><th>Address</th><th>Active</th><th style="width:180px"></th>
+        <th>Category</th>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Email</th>
+        <th>Address</th>
+        <th>Active</th>
+        <th style="width:180px"></th>
       </tr>
     </thead>
     <tbody>
@@ -44,8 +53,16 @@
       <tr>
         <td>{{ p.category.name }}</td>
         <td>{{ p.full_name }}</td>
-        <td>{{ p.phone|default:"—" }}</td>
-        <td>{{ p.email|default:"—" }}</td>
+        <td>
+          {% if p.phone %}
+            <a href="tel:{{ p.phone|urlencode }}">{{ p.phone }}</a>
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          {% if p.email %}
+            <a href="mailto:{{ p.email|urlencode }}">{{ p.email }}</a>
+          {% else %}—{% endif %}
+        </td>
         <td>{{ p.address|default:"—" }}</td>
         <td>{% if p.is_active %}<span class="badge ok">Yes</span>{% else %}<span class="badge muted">No</span>{% endif %}</td>
         <td>
@@ -67,11 +84,13 @@
   {% if is_paginated %}
   <div class="pager">
     {% if page_obj.has_previous %}
-      <a class="btn ghost sm" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&category={{ category }}&active={{ active }}">Prev</a>
+      <a class="btn ghost sm"
+         href="?page={{ page_obj.previous_page_number }}&q={{ q }}&category={{ category }}&active={{ active }}">Prev</a>
     {% endif %}
     <span class="muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
     {% if page_obj.has_next %}
-      <a class="btn ghost sm" href="?page={{ page_obj.next_page_number }}&q={{ q }}&category={{ category }}&active={{ active }}">Next</a>
+      <a class="btn ghost sm"
+         href="?page={{ page_obj.next_page_number }}&q={{ q }}&category={{ category }}&active={{ active }}">Next</a>
     {% endif %}
   </div>
   {% endif %}
