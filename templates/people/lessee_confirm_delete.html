@@ -1,0 +1,22 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="h1">Delete lessee</h1>
+  <div class="sub">This will permanently remove the lessee and related tenancy records.</div>
+</div>
+
+<div class="card">
+  {% include "_messages.html" %}
+  <p><strong>Name:</strong> {{ object.name }}</p>
+  <p><strong>Phone:</strong> {{ object.phone }}</p>
+  <p><strong>Linked tenancy records:</strong> {{ tenancy_count }}</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-actions">
+      <button class="btn danger" type="submit">Yes, delete permanently</button>
+      <a class="btn ghost" href="{% url 'people:lessees' %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
