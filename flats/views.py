@@ -1,3 +1,4 @@
+# flats/views.py
 import re
 from django.urls import reverse_lazy, reverse
 from django.views.generic import ListView, CreateView, UpdateView, TemplateView, View
@@ -5,10 +6,15 @@ from django.shortcuts import redirect, get_object_or_404
 from django.contrib import messages
 from django.db.models import Count, Q
 from django.utils import timezone
+from django.db import transaction
 
 from .models import Flat
-from .forms import FlatForm, OwnershipForm, TenancyForm
+from .forms import FlatForm
+from people.forms import OwnershipForm, TenancyForm
 from people.models import Ownership, Tenancy
+
+# Parking imports
+from parking.models import ParkingSpot, ParkingAssignment
 
 
 class FlatListView(ListView):
@@ -24,22 +30,17 @@ class FlatListView(ListView):
         floor = (self.request.GET.get('floor') or '').strip()
 
         if q:
-            s = re.sub(r'\s+', '', q).upper()  # normalize spaces and case
-
-            # Match flat number like A-07 / A07 / a-7 / a7
+            s = re.sub(r'\s+', '', q).upper()
             m = re.match(r'^([A-H])[-_]?0?(\d{1,2})$', s)
             if m:
                 unit, fl = m.group(1), int(m.group(2))
                 if 1 <= fl <= 14:
                     qs = qs.filter(unit__iexact=unit, floor=fl)
             elif s.isdigit():
-                # floor-only, e.g., "7"
                 qs = qs.filter(floor=int(s))
             elif len(s) == 1 and s in 'ABCDEFGH':
-                # unit-only, e.g., "A"
                 qs = qs.filter(unit__iexact=s)
             else:
-                # fallback to remarks
                 qs = qs.filter(Q(remarks__icontains=q))
 
         if status in dict(Flat.STATUS_CHOICES):
@@ -97,7 +98,6 @@ class FlatStatusUpdateView(View):
 
 class FlatOccupancyView(TemplateView):
     template_name = "flats/occupancy.html"
-
     def get_context_data(self, pk, **kwargs):
         ctx = super().get_context_data(**kwargs)
         flat = get_object_or_404(Flat, pk=pk)
@@ -113,40 +113,75 @@ class AssignOwnerView(View):
     def post(self, request, pk):
         flat = get_object_or_404(Flat, pk=pk)
         form = OwnershipForm(request.POST)
-        if form.is_valid():
+        if not form.is_valid():
+            messages.error(request, "Invalid owner assignment.")
+            return redirect(reverse("flats:occupancy", args=[flat.pk]))
+
+        with transaction.atomic():
             start = form.cleaned_data["start_date"]
             owner = form.cleaned_data["owner"]
+            end_date = form.cleaned_data.get("end_date")
+
+            # end current ownership if overlapping
             current = flat.active_ownership()
             if current and current.start_date <= start and current.end_date is None:
                 current.end_date = start
                 current.save(update_fields=["end_date"])
-            Ownership.objects.create(
-                flat=flat,
-                owner=owner,
-                start_date=start,
-                end_date=form.cleaned_data.get("end_date"),
-            )
+
+            Ownership.objects.create(flat=flat, owner=owner, start_date=start, end_date=end_date)
+
+            # mark flat as owner-occupied
             flat.status_hint = Flat.OWNER_OCCUPIED
             flat.save(update_fields=["status_hint"])
-            messages.success(request, f"Owner assigned to {flat}.")
-        else:
-            messages.error(request, "Invalid owner assignment.")
+
+            # Optional parking assignment
+            if form.cleaned_data.get("assign_parking"):
+                vehicle_no = (form.cleaned_data.get("vehicle_no") or "").strip()
+                note = (form.cleaned_data.get("parking_note") or "").strip()
+
+                spot, _ = ParkingSpot.objects.get_or_create(flat=flat)
+                # end existing active parking if overlapping
+                active_pa = spot.active_assignment()
+                if active_pa and active_pa.start_date <= start and active_pa.end_date is None:
+                    active_pa.end_date = start
+                    active_pa.save(update_fields=["end_date"])
+
+                ParkingAssignment.objects.create(
+                    spot=spot, start_date=start, vehicle_no=vehicle_no, note=note
+                )
+
+        messages.success(request, f"Owner assigned to {flat} (parking updated: {'Yes' if form.cleaned_data.get('assign_parking') else 'No'}).")
         return redirect(reverse("flats:occupancy", args=[flat.pk]))
 
 
 class EndOwnerView(View):
     def post(self, request, pk):
         flat = get_object_or_404(Flat, pk=pk)
-        current = flat.active_ownership()
-        if current:
-            current.end_date = timezone.now().date()
-            current.save(update_fields=["end_date"])
-            if flat.active_tenancy() is None:
-                flat.status_hint = Flat.VACANT
-                flat.save(update_fields=["status_hint"])
-            messages.success(request, f"Ended owner for {flat}.")
-        else:
-            messages.info(request, "No active owner to end.")
+        end_parking = bool(request.POST.get("end_parking"))
+        with transaction.atomic():
+            current = flat.active_ownership()
+            if current:
+                current.end_date = timezone.localdate()
+                current.save(update_fields=["end_date"])
+                # If no lessee active, set to vacant
+                if flat.active_tenancy() is None:
+                    flat.status_hint = Flat.VACANT
+                    flat.save(update_fields=["status_hint"])
+                messages.success(request, f"Ended owner for {flat}.")
+            else:
+                messages.info(request, "No active owner to end.")
+
+            if end_parking:
+                try:
+                    spot = flat.parking_spot
+                    active_pa = spot.active_assignment()
+                    if active_pa and active_pa.end_date is None:
+                        active_pa.end_date = timezone.localdate()
+                        active_pa.save(update_fields=["end_date"])
+                        messages.success(request, f"Ended parking assignment for {spot.code}.")
+                except ParkingSpot.DoesNotExist:
+                    pass
+
         return redirect(reverse("flats:occupancy", args=[flat.pk]))
 
 
@@ -154,38 +189,74 @@ class AssignLesseeView(View):
     def post(self, request, pk):
         flat = get_object_or_404(Flat, pk=pk)
         form = TenancyForm(request.POST)
-        if form.is_valid():
+        if not form.is_valid():
+            messages.error(request, "Invalid lessee assignment.")
+            return redirect(reverse("flats:occupancy", args=[flat.pk]))
+
+        with transaction.atomic():
             start = form.cleaned_data["start_date"]
             lessee = form.cleaned_data["lessee"]
+            end_date = form.cleaned_data.get("end_date")
+
+            # end current tenancy if overlapping
             current = flat.active_tenancy()
             if current and current.start_date <= start and current.end_date is None:
                 current.end_date = start
                 current.save(update_fields=["end_date"])
-            Tenancy.objects.create(
-                flat=flat,
-                lessee=lessee,
-                start_date=start,
-                end_date=form.cleaned_data.get("end_date"),
-            )
+
+            Tenancy.objects.create(flat=flat, lessee=lessee, start_date=start, end_date=end_date)
+
+            # mark flat as rented
             flat.status_hint = Flat.RENTED
             flat.save(update_fields=["status_hint"])
-            messages.success(request, f"Lessee assigned to {flat}.")
-        else:
-            messages.error(request, "Invalid lessee assignment.")
+
+            # Optional parking assignment
+            if form.cleaned_data.get("assign_parking"):
+                vehicle_no = (form.cleaned_data.get("vehicle_no") or "").strip()
+                note = (form.cleaned_data.get("parking_note") or "").strip()
+
+                spot, _ = ParkingSpot.objects.get_or_create(flat=flat)
+                # end existing active parking if overlapping
+                active_pa = spot.active_assignment()
+                if active_pa and active_pa.start_date <= start and active_pa.end_date is None:
+                    active_pa.end_date = start
+                    active_pa.save(update_fields=["end_date"])
+
+                ParkingAssignment.objects.create(
+                    spot=spot, start_date=start, vehicle_no=vehicle_no, note=note
+                )
+
+        messages.success(request, f"Lessee assigned to {flat} (parking updated: {'Yes' if form.cleaned_data.get('assign_parking') else 'No'}).")
         return redirect(reverse("flats:occupancy", args=[flat.pk]))
 
 
 class EndLesseeView(View):
     def post(self, request, pk):
         flat = get_object_or_404(Flat, pk=pk)
-        current = flat.active_tenancy()
-        if current:
-            current.end_date = timezone.now().date()
-            current.save(update_fields=["end_date"])
-            if flat.active_ownership() is None:
-                flat.status_hint = Flat.VACANT
-                flat.save(update_fields=["status_hint"])
-            messages.success(request, f"Ended lessee for {flat}.")
-        else:
-            messages.info(request, "No active lessee to end.")
+        end_parking = bool(request.POST.get("end_parking"))
+
+        with transaction.atomic():
+            current = flat.active_tenancy()
+            if current:
+                current.end_date = timezone.localdate()
+                current.save(update_fields=["end_date"])
+                # If no owner active, set to vacant
+                if flat.active_ownership() is None:
+                    flat.status_hint = Flat.VACANT
+                    flat.save(update_fields=["status_hint"])
+                messages.success(request, f"Ended lessee for {flat}.")
+            else:
+                messages.info(request, "No active lessee to end.")
+
+            if end_parking:
+                try:
+                    spot = flat.parking_spot
+                    active_pa = spot.active_assignment()
+                    if active_pa and active_pa.end_date is None:
+                        active_pa.end_date = timezone.localdate()
+                        active_pa.save(update_fields=["end_date"])
+                        messages.success(request, f"Ended parking assignment for {spot.code}.")
+                except ParkingSpot.DoesNotExist:
+                    pass
+
         return redirect(reverse("flats:occupancy", args=[flat.pk]))
