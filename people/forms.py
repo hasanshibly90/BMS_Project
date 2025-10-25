@@ -1,8 +1,6 @@
-# people/forms.py
 from django import forms
 from .models import Owner, Lessee, Ownership, Tenancy
 
-# Existing simple forms
 class OwnerForm(forms.ModelForm):
     class Meta:
         model = Owner
@@ -16,11 +14,7 @@ class LesseeForm(forms.ModelForm):
 _date = forms.DateInput(attrs={"type": "date"})
 
 class OwnershipForm(forms.ModelForm):
-    """
-    Assign an owner to a flat.
-    Extra fields let us assign parking in the same submit.
-    """
-    # extra (non-model) fields for parking
+    # Extra fields to also assign parking in the same submit
     assign_parking = forms.BooleanField(required=False, label="Also assign parking")
     vehicle_no = forms.CharField(required=False, label="Vehicle no")
     parking_note = forms.CharField(required=False, label="Parking note")
@@ -30,12 +24,7 @@ class OwnershipForm(forms.ModelForm):
         fields = ["owner", "start_date", "end_date"]
         widgets = {"start_date": _date, "end_date": _date}
 
-
 class TenancyForm(forms.ModelForm):
-    """
-    Assign a lessee to a flat.
-    Extra fields let us assign parking in the same submit.
-    """
     assign_parking = forms.BooleanField(required=False, label="Also assign parking")
     vehicle_no = forms.CharField(required=False, label="Vehicle no")
     parking_note = forms.CharField(required=False, label="Parking note")

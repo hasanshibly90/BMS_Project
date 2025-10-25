@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="h1">Building overview</h1>
+  <div class="sub">Flats · Occupants · Parking</div>
+</div>
+
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Flat</th>
+        <th>Status</th>
+        <th>Current</th>
+        <th>Parking</th>
+        <th>Vehicle</th>
+        <th style="width:260px">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.flat }}</td>
+        <td>{{ r.status }}</td>
+        <td>{% if r.occ_label != "—" %}{{ r.occ_label }}: {{ r.occ_name }}{% else %}—{% endif %}</td>
+        <td>{{ r.parking_code }}</td>
+        <td>{{ r.vehicle }}</td>
+        <td>
+          <a class="btn" href="{% url 'flats:occupancy' r.flat_id %}">Occupancy</a>
+          {% if r.spot_id %}
+            <a class="btn ghost" href="{% url 'parking:spot_detail' r.spot_id %}">Parking</a>
+          {% else %}
+            <span class="muted">No parking</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted">No flats.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

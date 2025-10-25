@@ -2,12 +2,7 @@
 from django.db.models import Q
 from flats.models import Flat
 
-
 class ParkingSpot(models.Model):
-    """
-    One parking spot per flat.
-    code is always derived from the flat (e.g., E-10), not editable.
-    """
     flat = models.OneToOneField(Flat, on_delete=models.CASCADE, related_name="parking_spot")
     code = models.CharField(max_length=8, unique=True, editable=False)
     location = models.CharField(max_length=120, blank=True)
@@ -16,14 +11,12 @@ class ParkingSpot(models.Model):
         ordering = ["flat__floor", "flat__unit"]
 
     def save(self, *args, **kwargs):
-        # derive code from flat (unit-floor)
         self.code = f"{self.flat.unit}-{self.flat.floor:02d}"
         super().save(*args, **kwargs)
 
     def __str__(self):
         return self.code
 
-    # helpers
     def active_assignment(self):
         return self.assignments.filter(end_date__isnull=True).order_by("-start_date").first()
 
@@ -31,12 +24,7 @@ class ParkingSpot(models.Model):
     def is_assigned(self) -> bool:
         return self.active_assignment() is not None
 
-
 class ParkingAssignment(models.Model):
-    """
-    History of who (typically a flat or vehicle) used the parking spot and when.
-    Only one active assignment per spot.
-    """
     spot = models.ForeignKey(ParkingSpot, on_delete=models.CASCADE, related_name="assignments")
     start_date = models.DateField()
     end_date = models.DateField(blank=True, null=True)

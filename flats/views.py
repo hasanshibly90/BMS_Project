@@ -1,4 +1,3 @@
-# flats/views.py
 import re
 from django.urls import reverse_lazy, reverse
 from django.views.generic import ListView, CreateView, UpdateView, TemplateView, View
@@ -13,9 +12,7 @@ from .forms import FlatForm
 from people.forms import OwnershipForm, TenancyForm
 from people.models import Ownership, Tenancy
 
-# Parking imports
 from parking.models import ParkingSpot, ParkingAssignment
-
 
 class FlatListView(ListView):
     model = Flat
@@ -67,20 +64,17 @@ class FlatListView(ListView):
         ctx['status_choices'] = Flat.STATUS_CHOICES
         return ctx
 
-
 class FlatCreateView(CreateView):
     model = Flat
     form_class = FlatForm
     template_name = 'form.html'
     success_url = reverse_lazy('flats:list')
 
-
 class FlatUpdateView(UpdateView):
     model = Flat
     form_class = FlatForm
     template_name = 'form.html'
     success_url = reverse_lazy('flats:list')
-
 
 class FlatStatusUpdateView(View):
     def post(self, request, pk):
@@ -95,7 +89,6 @@ class FlatStatusUpdateView(View):
             messages.error(request, 'Invalid status.')
         return redirect(request.META.get('HTTP_REFERER') or reverse_lazy('flats:list'))
 
-
 class FlatOccupancyView(TemplateView):
     template_name = "flats/occupancy.html"
     def get_context_data(self, pk, **kwargs):
@@ -107,7 +100,6 @@ class FlatOccupancyView(TemplateView):
         ctx["ownership_form"] = OwnershipForm()
         ctx["tenancy_form"] = TenancyForm()
         return ctx
-
 
 class AssignOwnerView(View):
     def post(self, request, pk):
@@ -122,7 +114,6 @@ class AssignOwnerView(View):
             owner = form.cleaned_data["owner"]
             end_date = form.cleaned_data.get("end_date")
 
-            # end current ownership if overlapping
             current = flat.active_ownership()
             if current and current.start_date <= start and current.end_date is None:
                 current.end_date = start
@@ -130,17 +121,14 @@ class AssignOwnerView(View):
 
             Ownership.objects.create(flat=flat, owner=owner, start_date=start, end_date=end_date)
 
-            # mark flat as owner-occupied
             flat.status_hint = Flat.OWNER_OCCUPIED
             flat.save(update_fields=["status_hint"])
 
-            # Optional parking assignment
             if form.cleaned_data.get("assign_parking"):
                 vehicle_no = (form.cleaned_data.get("vehicle_no") or "").strip()
                 note = (form.cleaned_data.get("parking_note") or "").strip()
 
                 spot, _ = ParkingSpot.objects.get_or_create(flat=flat)
-                # end existing active parking if overlapping
                 active_pa = spot.active_assignment()
                 if active_pa and active_pa.start_date <= start and active_pa.end_date is None:
                     active_pa.end_date = start
@@ -153,7 +141,6 @@ class AssignOwnerView(View):
         messages.success(request, f"Owner assigned to {flat} (parking updated: {'Yes' if form.cleaned_data.get('assign_parking') else 'No'}).")
         return redirect(reverse("flats:occupancy", args=[flat.pk]))
 
-
 class EndOwnerView(View):
     def post(self, request, pk):
         flat = get_object_or_404(Flat, pk=pk)
@@ -163,7 +150,6 @@ class EndOwnerView(View):
             if current:
                 current.end_date = timezone.localdate()
                 current.save(update_fields=["end_date"])
-                # If no lessee active, set to vacant
                 if flat.active_tenancy() is None:
                     flat.status_hint = Flat.VACANT
                     flat.save(update_fields=["status_hint"])
@@ -184,7 +170,6 @@ class EndOwnerView(View):
 
         return redirect(reverse("flats:occupancy", args=[flat.pk]))
 
-
 class AssignLesseeView(View):
     def post(self, request, pk):
         flat = get_object_or_404(Flat, pk=pk)
@@ -198,7 +183,6 @@ class AssignLesseeView(View):
             lessee = form.cleaned_data["lessee"]
             end_date = form.cleaned_data.get("end_date")
 
-            # end current tenancy if overlapping
             current = flat.active_tenancy()
             if current and current.start_date <= start and current.end_date is None:
                 current.end_date = start
@@ -206,17 +190,14 @@ class AssignLesseeView(View):
 
             Tenancy.objects.create(flat=flat, lessee=lessee, start_date=start, end_date=end_date)
 
-            # mark flat as rented
             flat.status_hint = Flat.RENTED
             flat.save(update_fields=["status_hint"])
 
-            # Optional parking assignment
             if form.cleaned_data.get("assign_parking"):
                 vehicle_no = (form.cleaned_data.get("vehicle_no") or "").strip()
                 note = (form.cleaned_data.get("parking_note") or "").strip()
 
                 spot, _ = ParkingSpot.objects.get_or_create(flat=flat)
-                # end existing active parking if overlapping
                 active_pa = spot.active_assignment()
                 if active_pa and active_pa.start_date <= start and active_pa.end_date is None:
                     active_pa.end_date = start
@@ -229,7 +210,6 @@ class AssignLesseeView(View):
         messages.success(request, f"Lessee assigned to {flat} (parking updated: {'Yes' if form.cleaned_data.get('assign_parking') else 'No'}).")
         return redirect(reverse("flats:occupancy", args=[flat.pk]))
 
-
 class EndLesseeView(View):
     def post(self, request, pk):
         flat = get_object_or_404(Flat, pk=pk)
@@ -240,7 +220,6 @@ class EndLesseeView(View):
             if current:
                 current.end_date = timezone.localdate()
                 current.save(update_fields=["end_date"])
-                # If no owner active, set to vacant
                 if flat.active_ownership() is None:
                     flat.status_hint = Flat.VACANT
                     flat.save(update_fields=["status_hint"])

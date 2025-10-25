@@ -19,7 +19,10 @@
     <p class="muted">From {{ active_owner.start_date }} to {{ active_owner.end_date|default:"present" }}</p>
     <form method="post" action="{% url 'flats:end_owner' flat.pk %}">
       {% csrf_token %}
-      <button class="btn ghost" type="submit">End owner now</button>
+      <label style="display:inline-flex;gap:6px;align-items:center">
+        <input type="checkbox" name="end_parking"> Also end parking now
+      </label>
+      <button class="btn ghost" type="submit" style="margin-left:8px">End owner now</button>
     </form>
     <hr style="border-color:var(--line);margin:14px 0">
   {% endif %}
@@ -35,6 +38,18 @@
     </p>
     <p><label><strong>Start date</strong></label><br>{{ ownership_form.start_date }}</p>
     <p><label><strong>End date (optional)</strong></label><br>{{ ownership_form.end_date }}</p>
+
+    <!-- Parking-in-same-submit controls -->
+    <p style="margin-top:10px">
+      <label style="display:inline-flex;gap:6px;align-items:center">
+        {{ ownership_form.assign_parking }} Also assign parking
+      </label>
+    </p>
+    <div class="parking-extra" data-parking-extra style="display:none">
+      <p><label><strong>Vehicle no</strong></label><br>{{ ownership_form.vehicle_no }}</p>
+      <p><label><strong>Parking note</strong></label><br>{{ ownership_form.parking_note }}</p>
+    </div>
+
     <div class="form-actions">
       <button class="btn" type="submit">Assign owner</button>
       <a class="btn ghost" href="{% url 'flats:list' %}">Back to list</a>
@@ -55,7 +70,10 @@
     <p class="muted">From {{ active_lessee.start_date }} to {{ active_lessee.end_date|default:"present" }}</p>
     <form method="post" action="{% url 'flats:end_lessee' flat.pk %}">
       {% csrf_token %}
-      <button class="btn ghost danger" type="submit">End lessee now</button>
+      <label style="display:inline-flex;gap:6px;align-items:center">
+        <input type="checkbox" name="end_parking"> Also end parking now
+      </label>
+      <button class="btn ghost danger" type="submit" style="margin-left:8px">End lessee now</button>
     </form>
     <hr style="border-color:var(--line);margin:14px 0">
   {% endif %}
@@ -71,6 +89,18 @@
     </p>
     <p><label><strong>Start date</strong></label><br>{{ tenancy_form.start_date }}</p>
     <p><label><strong>End date (optional)</strong></label><br>{{ tenancy_form.end_date }}</p>
+
+    <!-- Parking-in-same-submit controls -->
+    <p style="margin-top:10px">
+      <label style="display:inline-flex;gap:6px;align-items:center">
+        {{ tenancy_form.assign_parking }} Also assign parking
+      </label>
+    </p>
+    <div class="parking-extra" data-parking-extra style="display:none">
+      <p><label><strong>Vehicle no</strong></label><br>{{ tenancy_form.vehicle_no }}</p>
+      <p><label><strong>Parking note</strong></label><br>{{ tenancy_form.parking_note }}</p>
+    </div>
+
     <div class="form-actions">
       <button class="btn" type="submit">Assign lessee</button>
       <a class="btn ghost" href="{% url 'flats:list' %}">Back to list</a>
@@ -140,11 +170,12 @@
   </table>
 </div>
 
-<!-- Type-ahead JS (vanilla) -->
+<!-- Type-ahead + parking toggles (vanilla JS) -->
 <script>
 (function () {
   function debounce(fn, ms){ let t; return function(){ clearTimeout(t); t=setTimeout(()=>fn.apply(this, arguments), ms); }; }
 
+  // Type-ahead
   function wireTypeahead(inputId, hiddenId, panelId, endpoint){
     const box   = document.getElementById(inputId);
     const hid   = document.getElementById(hiddenId);
@@ -168,9 +199,7 @@
     }
 
     function fetchAll(){
-      fetch(endpoint)
-        .then(r=>r.json()).then(d=>render(d.results||[]))
-        .catch(()=>clearPanel());
+      fetch(endpoint).then(r=>r.json()).then(d=>render(d.results||[])).catch(()=>clearPanel());
     }
     const fetchFiltered = debounce(()=>{
       const q = (box.value||'').trim();
@@ -181,13 +210,26 @@
         .catch(()=>clearPanel());
     },200);
 
-    box.addEventListener('focus', fetchAll);   // show all immediately
+    box.addEventListener('focus', fetchAll);
     box.addEventListener('input', fetchFiltered);
     box.addEventListener('blur', ()=> setTimeout(clearPanel, 150));
   }
 
+  // Parking extra fields toggle per form
+  function bindParkingToggles(){
+    document.querySelectorAll('form').forEach(function(f){
+      const chk = f.querySelector('input[name="assign_parking"]');
+      const extra = f.querySelector('[data-parking-extra]');
+      if (!chk || !extra) return;
+      const apply = ()=>{ extra.style.display = chk.checked ? 'block' : 'none'; };
+      chk.addEventListener('change', apply);
+      apply();
+    });
+  }
+
   wireTypeahead('ownerSearch',  'id_owner',  'ownerResults',  '/people/api/owners');
   wireTypeahead('lesseeSearch', 'id_lessee', 'lesseeResults', '/people/api/lessees');
+  bindParkingToggles();
 })();
 </script>
 

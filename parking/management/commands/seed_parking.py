@@ -8,7 +8,9 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         created = 0
         for flat in Flat.objects.all():
-            spot, made = ParkingSpot.objects.get_or_create(flat=flat)
+            _, made = ParkingSpot.objects.get_or_create(flat=flat)
             if made:
                 created += 1
-        self.stdout.write(self.style.SUCCESS(f"Parking spots ready. Created: {created}, total: {ParkingSpot.objects.count()}"))
+        self.stdout.write(self.style.SUCCESS(
+            f"Parking spots ready. Created: {created}, total: {ParkingSpot.objects.count()}"
+        ))

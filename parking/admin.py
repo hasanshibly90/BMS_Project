@@ -1,7 +1,6 @@
 from django.contrib import admin
 from .models import ParkingSpot, ParkingAssignment
 
-
 @admin.register(ParkingSpot)
 class ParkingSpotAdmin(admin.ModelAdmin):
     list_display = ("code", "flat", "location", "assigned_now")
@@ -11,7 +10,6 @@ class ParkingSpotAdmin(admin.ModelAdmin):
         return bool(obj.active_assignment())
     assigned_now.boolean = True
     assigned_now.short_description = "Assigned"
-
 
 @admin.register(ParkingAssignment)
 class ParkingAssignmentAdmin(admin.ModelAdmin):
