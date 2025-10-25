@@ -4,26 +4,12 @@
   <h1 class="h1">Dashboard</h1>
   <div class="sub">Single-building management overview</div>
 </div>
-
 <div class="kpi-grid">
-  <div class="kpi-card">
-    <div class="kpi-value">{{ flat_count }}</div>
-    <div class="kpi-label">Total Flats</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-value">{{ cnt_owner|default:0 }}</div>
-    <div class="kpi-label">Owner occupied</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-value">{{ cnt_rented|default:0 }}</div>
-    <div class="kpi-label">Rented</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-value">{{ cnt_vacant|default:0 }}</div>
-    <div class="kpi-label">Vacant</div>
-  </div>
+  <div class="kpi-card"><div class="kpi-value">{{ flat_count }}</div><div class="kpi-label">Flats</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ cnt_owner }}</div><div class="kpi-label">Owner occupied</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ cnt_rented }}</div><div class="kpi-label">Rented</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ cnt_vacant }}</div><div class="kpi-label">Vacant</div></div>
 </div>
-
 <div class="card">
   <div class="card-head">
     <h2 class="card-title">Building occupancy map</h2>
@@ -33,15 +19,11 @@
       <span class="badge muted">Vacant</span>
     </div>
   </div>
-
   <div class="building-grid">
     <div class="grid-head">
       <div class="cell head"></div>
-      {% for u in "ABCDEFGH" %}
-      <div class="cell head">{{ u }}</div>
-      {% endfor %}
+      {% for u in "ABCDEFGH" %}<div class="cell head">{{ u }}</div>{% endfor %}
     </div>
-
     {% for row in levels %}
     <div class="grid-row">
       <div class="cell head">F{{ row.floor }}</div>
@@ -56,17 +38,6 @@
       {% endfor %}
     </div>
     {% endfor %}
-  </div>
-</div>
-
-<div class="card">
-  <h2 class="card-title">Quick actions</h2>
-  <div class="actions">
-    <a class="btn" href="/flats/">View flats</a>
-    <a class="btn" href="/people/owners/">Owners</a>
-    <a class="btn" href="/people/lessees/">Lessees</a>
-    <a class="btn" href="/parking/spots/">Parking spots</a>
-    <a class="btn" href="/elections/cycles/">Election cycles</a>
   </div>
 </div>
 {% endblock %}

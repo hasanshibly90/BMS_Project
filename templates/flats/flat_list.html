@@ -1,17 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
-
 <div class="page-head">
   <h1 class="h1">Flats</h1>
   <div class="sub">Filter, edit status inline, manage occupancy</div>
 </div>
-
 <div class="kpi-grid">
   <div class="kpi-card"><div class="kpi-value">{{ cnt_owner }}</div><div class="kpi-label">Owner occupied</div></div>
   <div class="kpi-card"><div class="kpi-value">{{ cnt_rented }}</div><div class="kpi-label">Rented</div></div>
   <div class="kpi-card"><div class="kpi-value">{{ cnt_vacant }}</div><div class="kpi-label">Vacant</div></div>
 </div>
-
 <div class="card">
   <div class="toolbar">
     <form method="get" class="filters">
@@ -39,13 +36,8 @@
   <table class="table">
     <thead>
       <tr>
-        <th>Flat</th>
-        <th>Floor</th>
-        <th>Status</th>
-        <th>Current occupant</th>
-        <th>Remarks</th>
-        <th style="width:160px">Update status</th>
-        <th style="width:140px"></th>
+        <th>Flat</th><th>Floor</th><th>Status</th><th>Current occupant</th>
+        <th>Remarks</th><th style="width:160px">Update status</th><th style="width:140px"></th>
       </tr>
     </thead>
     <tbody>
@@ -54,13 +46,9 @@
         <td>{{ o.unit }}-{{ o.floor|stringformat:"02d" }}</td>
         <td>{{ o.floor }}</td>
         <td>
-          {% if o.status_hint == 'owner' %}
-            <span class="badge ok">Owner</span>
-          {% elif o.status_hint == 'rented' %}
-            <span class="badge info">Rented</span>
-          {% else %}
-            <span class="badge muted">Vacant</span>
-          {% endif %}
+          {% if o.status_hint == 'owner' %}<span class="badge ok">Owner</span>
+          {% elif o.status_hint == 'rented' %}<span class="badge info">Rented</span>
+          {% else %}<span class="badge muted">Vacant</span>{% endif %}
         </td>
         <td>{{ o.occupant_label }}</td>
         <td>{{ o.remarks }}</td>
@@ -98,5 +86,4 @@
   </div>
   {% endif %}
 </div>
-
 {% endblock %}

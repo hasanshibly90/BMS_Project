@@ -14,8 +14,7 @@
       <a href="/" data-path="/">Dashboard</a>
       <a href="/flats/" data-path="/flats/">Flats</a>
       <a href="/people/owners/" data-path="/people/">People</a>
-      <a href="/parking/spots/" data-path="/parking/">Parking</a>
-      <a href="/elections/cycles/" data-path="/elections/">Elections</a>
+      <a href="/tools/bulk-owners/" data-path="/tools/bulk-owners/">Tools</a>
       <a href="/admin/">Admin</a>
     </nav>
     <div class="topbar-actions">
@@ -27,12 +26,10 @@
       {% endif %}
     </div>
   </header>
-
   <main class="container">
     {% include "_messages.html" %}
     {% block content %}{% endblock %}
   </main>
-
   <script src="/static/js/app.js"></script>
 </body>
 </html>

@@ -9,7 +9,6 @@ class Flat(models.Model):
         (OWNER_OCCUPIED, 'Owner-occupied'),
         (RENTED, 'Rented'),
     ]
-
     floor = models.PositiveSmallIntegerField()
     unit = models.CharField(max_length=1)  # A–H
     remarks = models.CharField(max_length=255, blank=True)
@@ -22,24 +21,13 @@ class Flat(models.Model):
     def __str__(self):
         return f"{self.unit}-{self.floor:02d}"
 
-    # --- Occupancy helpers (import lazily to avoid circular import) ---
     def active_ownership(self):
         from people.models import Ownership
-        return (
-            Ownership.objects
-            .filter(flat=self, end_date__isnull=True)
-            .order_by('-start_date')
-            .first()
-        )
+        return Ownership.objects.filter(flat=self, end_date__isnull=True).order_by('-start_date').first()
 
     def active_tenancy(self):
         from people.models import Tenancy
-        return (
-            Tenancy.objects
-            .filter(flat=self, end_date__isnull=True)
-            .order_by('-start_date')
-            .first()
-        )
+        return Tenancy.objects.filter(flat=self, end_date__isnull=True).order_by('-start_date').first()
 
     @property
     def current_owner(self):

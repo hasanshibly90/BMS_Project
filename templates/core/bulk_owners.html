@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="h1">Bulk owners (one-time manual update)</h1>
+  <div class="sub">Paste rows: Flat no, Owner name, Cell number</div>
+</div>
+<div class="card">
+  {% include "_messages.html" %}
+  <form method="post" class="form">
+    {% csrf_token %}
+    <p>
+      <label><strong>Data</strong></label><br>
+      {{ form.data }}
+      <small class="muted">
+        Header is optional. Accepts comma or tab separated.<br>
+        Example:<br>
+        Flat no, Owner, Cell<br>
+        A-01, Md. Rahim, 01711123456
+      </small>
+    </p>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <p>
+        <label><strong>Start date</strong></label><br>
+        {{ form.start_date }}
+      </p>
+      <p>
+        <label>{{ form.vacate_missing }} <strong>Vacate flats not listed</strong></label>
+      </p>
+      <p>
+        <label>{{ form.dry_run }} <strong>Preview only (no changes)</strong></label>
+      </p>
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Run</button>
+      <a class="btn ghost" href="/">Back</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

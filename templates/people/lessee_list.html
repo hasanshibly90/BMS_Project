@@ -1,11 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-
-<div class="page-head">
-  <h1 class="h1">Lessees</h1>
-  <div class="sub">Manage lessees, upload photo and NID, print profiles</div>
-</div>
-
+<div class="page-head"><h1 class="h1">Lessees</h1><div class="sub">Manage lessees, upload photo and NID, print profiles</div></div>
 <div class="card">
   <div class="toolbar">
     <form method="get" class="filters">
@@ -13,51 +8,25 @@
       <button class="btn" type="submit">Search</button>
       <a class="btn ghost" href="{% url 'people:lessees' %}">Reset</a>
     </form>
-    <div class="actions">
-      <a class="btn" href="{% url 'people:lessee_create' %}">Add lessee</a>
-    </div>
+    <div class="actions"><a class="btn" href="{% url 'people:lessee_create' %}">Add lessee</a></div>
   </div>
-
   <table class="table">
-    <thead>
-      <tr><th>Photo</th><th>Name</th><th>Phone</th><th>Email</th><th>Address</th><th style="width:160px"></th></tr>
-    </thead>
+    <thead><tr><th>Photo</th><th>Name</th><th>Phone</th><th>Email</th><th>Address</th><th style="width:160px"></th></tr></thead>
     <tbody>
       {% for o in object_list %}
       <tr>
-        <td>
-          {% if o.photo %}
-            <img src="{{ o.photo.url }}" alt="photo" style="width:40px;height:40px;object-fit:cover;border-radius:8px;border:1px solid var(--line);" />
-          {% else %}
-            <span class="muted">None</span>
-          {% endif %}
-        </td>
-        <td>{{ o.name }}</td>
-        <td>{{ o.phone }}</td>
-        <td>{{ o.email }}</td>
-        <td>{{ o.address }}</td>
-        <td>
-          <a class="btn ghost" href="{% url 'people:lessee_edit' o.pk %}">Edit</a>
-          <a class="btn" href="{% url 'people:lessee_pdf' o.pk %}" target="_blank">PDF</a>
-        </td>
+        <td>{% if o.photo %}<img src="{{ o.photo.url }}" alt="photo" style="width:40px;height:40px;object-fit:cover;border-radius:8px;border:1px solid var(--line);" />{% else %}<span class="muted">None</span>{% endif %}</td>
+        <td>{{ o.name }}</td><td>{{ o.phone }}</td><td>{{ o.email }}</td><td>{{ o.address }}</td>
+        <td><a class="btn ghost" href="{% url 'people:lessee_edit' o.pk %}">Edit</a><a class="btn" href="{% url 'people:lessee_pdf' o.pk %}" target="_blank">PDF</a></td>
       </tr>
-      {% empty %}
-      <tr><td colspan="6" class="muted">No lessees found.</td></tr>
-      {% endfor %}
+      {% empty %}<tr><td colspan="6" class="muted">No lessees found.</td></tr>{% endfor %}
     </tbody>
   </table>
-
   {% if is_paginated %}
   <div class="pager">
-    {% if page_obj.has_previous %}
-      <a class="btn ghost sm" href="?page={{ page_obj.previous_page_number }}&q={{ q }}">Prev</a>
-    {% endif %}
-    <span class="muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-    {% if page_obj.has_next %}
-      <a class="btn ghost sm" href="?page={{ page_obj.next_page_number }}&q={{ q }}">Next</a>
-    {% endif %}
-  </div>
-  {% endif %}
+    {% if page_obj.has_previous %}<a class="btn ghost sm" href="?page={{ page_obj.previous_page_number }}&q={{ q }}">Prev</a>{% endif %}
+    <span class="muted">Page {{ page_obj.number }} of {{ page_obj.paginator_num_pages }}</span>
+    {% if page_obj.has_next %}<a class="btn ghost sm" href="?page={{ page_obj.next_page_number }}&q={{ q }}">Next</a>{% endif %}
+  </div>{% endif %}
 </div>
-
 {% endblock %}

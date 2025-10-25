@@ -1,4 +1,3 @@
-// Theme toggle + active nav + autosubmit
 (function () {
   var body = document.body;
   var saved = localStorage.getItem("bms-theme");
@@ -15,14 +14,12 @@
     });
   }
 
-  // Active nav highlight
   var here = window.location.pathname;
   document.querySelectorAll(".nav a").forEach(function (a) {
     var p = a.getAttribute("data-path") || a.getAttribute("href");
     if (p && here.startsWith(p)) a.classList.add("active");
   });
 
-  // Auto-submit inline forms (status dropdown in flats table)
   document.querySelectorAll('form[data-autosubmit] .js-auto-submit')
     .forEach(function (sel) {
       sel.addEventListener("change", function () {

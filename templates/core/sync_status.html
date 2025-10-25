@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="h1">Sync flat statuses</h1>
+  <div class="sub">Aligns each Flat status with its active Ownership/Tenancy</div>
+</div>
+
+<div class="card">
+  {% include "_messages.html" %}
+  <p>Total flats: <strong>{{ flat_count }}</strong></p>
+  <p>Active owners: <strong>{{ active_owners }}</strong></p>
+  <p>Active tenants: <strong>{{ active_tenants }}</strong></p>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-actions">
+      <button class="btn" type="submit">Run Sync</button>
+      <a class="btn ghost" href="/">Back</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
