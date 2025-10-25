@@ -10,6 +10,9 @@ from core.views import DashboardView, BulkOwnersView, SyncStatusView
 urlpatterns = [
     path("admin/", admin.site.urls),
 
+    # Auth (enables /accounts/login, /accounts/logout, etc.)
+    path("accounts/", include("django.contrib.auth.urls")),
+
     # Home
     path("", DashboardView.as_view(), name="dashboard"),
 

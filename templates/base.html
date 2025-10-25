@@ -10,33 +10,41 @@
 <body class="theme-dark">
   <header class="topbar">
     <div class="brand">BMS</div>
+
     <nav class="nav">
-      <a href="/"                data-path="/">Dashboard</a>
-      <a href="/flats/"          data-path="/flats/">Flats</a>
+      <a href="/"                     data-path="/">Dashboard</a>
+      <a href="/flats/"               data-path="/flats/">Flats</a>
 
       <!-- People -->
-      <a href="/people/owners/"  data-path="/people/owners/">Owners</a>
-      <a href="/people/lessees/" data-path="/people/lessees/">Lessees</a>
+      <a href="/people/owners/"       data-path="/people/owners/">Owners</a>
+      <a href="/people/lessees/"      data-path="/people/lessees/">Lessees</a>
+
+      <!-- Parking -->
+      <a href="/parking/spots/"       data-path="/parking/">Parking</a>
 
       <!-- Tools -->
-      <a href="/tools/bulk-owners/" data-path="/tools/bulk-owners/">Bulk owners</a>
-      <a href="/tools/sync-status/" data-path="/tools/sync-status/">Sync status</a>
+      <a href="/tools/bulk-owners/"   data-path="/tools/bulk-owners/">Bulk owners</a>
+      <a href="/tools/sync-status/"   data-path="/tools/sync-status/">Sync status</a>
 
       <a href="/admin/">Admin</a>
     </nav>
+
     <div class="topbar-actions">
       <button id="themeToggle" class="btn ghost sm" title="Toggle theme">Theme</button>
       {% if user.is_authenticated %}
+        <span class="muted" style="margin-right:8px;">Hi, {{ user.username }}</span>
         <a class="btn sm" href="/accounts/logout/">Logout</a>
       {% else %}
         <a class="btn sm" href="/accounts/login/">Login</a>
       {% endif %}
     </div>
   </header>
+
   <main class="container">
     {% include "_messages.html" %}
     {% block content %}{% endblock %}
   </main>
+
   <script src="/static/js/app.js"></script>
 </body>
 </html>

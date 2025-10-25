@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-head">
+  <h1 class="h1">Parking — {{ spot.code }}</h1>
+  <div class="sub">Linked flat: {{ spot.flat.unit }}-{{ spot.flat.floor|stringformat:"02d" }}</div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h2 class="card-title">Current assignment</h2>
+    {% if active %}<span class="badge info">Active</span>{% else %}<span class="badge muted">None</span>{% endif %}
+  </div>
+
+  {% if active %}
+    <p><strong>Vehicle:</strong> {{ active.vehicle_no|default:"—" }}</p>
+    <p><strong>From:</strong> {{ active.start_date }} <strong>To:</strong> {{ active.end_date|default:"present" }}</p>
+    <p><strong>Note:</strong> {{ active.note|default:"—" }}</p>
+    <form method="post" action="{% url 'parking:spot_end' spot.pk %}">
+      {% csrf_token %}
+      <button class="btn ghost danger" type="submit">End now</button>
+    </form>
+    <hr style="border-color:var(--line);margin:14px 0">
+  {% endif %}
+
+  <h3 class="card-title">Assign parking</h3>
+  <form method="post" action="{% url 'parking:spot_assign' spot.pk %}" class="form">
+    {% csrf_token %}
+    <p><label><strong>Start date</strong></label><br>{{ form.start_date }}</p>
+    <p><label><strong>End date (optional)</strong></label><br>{{ form.end_date }}</p>
+    <p><label><strong>Vehicle no</strong></label><br>{{ form.vehicle_no }}</p>
+    <p><label><strong>Note</strong></label><br>{{ form.note }}</p>
+    <div class="form-actions">
+      <button class="btn" type="submit">Assign</button>
+      <a class="btn ghost" href="{% url 'parking:spots' %}">Back to list</a>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h2 class="card-title">Assignment history ({{ history|length }})</h2>
+  </div>
+  <table class="table">
+    <thead><tr><th>From</th><th>To</th><th>Vehicle</th><th>Note</th></tr></thead>
+    <tbody>
+      {% for a in history %}
+      <tr>
+        <td>{{ a.start_date }}</td>
+        <td>{{ a.end_date|default:"present" }}</td>
+        <td>{{ a.vehicle_no|default:"—" }}</td>
+        <td>{{ a.note|default:"—" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4" class="muted">No assignments yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

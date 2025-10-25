@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="h1">Parking spots</h1>
+  <div class="sub">Code matches flat code (e.g., E-10). Assign/End with history.</div>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card"><div class="kpi-value">{{ cnt_total }}</div><div class="kpi-label">Total spots</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ cnt_assigned }}</div><div class="kpi-label">Assigned</div></div>
+  <div class="kpi-card"><div class="kpi-value">{{ cnt_unassigned }}</div><div class="kpi-label">Available</div></div>
+</div>
+
+<div class="card">
+  <div class="toolbar">
+    <form method="get" class="filters">
+      <input type="text" name="q" value="{{ q }}" placeholder="Search: E-10 or 10 or E or location">
+      <select name="status">
+        <option value="">Any status</option>
+        <option value="assigned"   {% if status == 'assigned' %}selected{% endif %}>Assigned</option>
+        <option value="unassigned" {% if status == 'unassigned' %}selected{% endif %}>Unassigned</option>
+      </select>
+      <button class="btn" type="submit">Apply</button>
+      <a class="btn ghost" href="{% url 'parking:spots' %}">Reset</a>
+    </form>
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr><th>Code</th><th>Flat</th><th>Status</th><th>Vehicle</th><th>Location</th><th style="width:140px"></th></tr>
+    </thead>
+    <tbody>
+      {% for s in object_list %}
+      {% with a=s.active_assignment %}
+      <tr>
+        <td>{{ s.code }}</td>
+        <td>{{ s.flat.unit }}-{{ s.flat.floor|stringformat:"02d" }}</td>
+        <td>
+          {% if a %}<span class="badge info">Assigned</span>
+          {% else %}<span class="badge muted">Available</span>{% endif %}
+        </td>
+        <td>{% if a %}{{ a.vehicle_no|default:"—" }}{% else %}—{% endif %}</td>
+        <td>{{ s.location|default:"—" }}</td>
+        <td><a class="btn" href="{% url 'parking:spot_detail' s.pk %}">Open</a></td>
+      </tr>
+      {% endwith %}
+      {% empty %}
+      <tr><td colspan="6" class="muted">No parking spots found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if is_paginated %}
+  <div class="pager">
+    {% if page_obj.has_previous %}
+      <a class="btn ghost sm" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&status={{ status }}">Prev</a>
+    {% endif %}
+    <span class="muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a class="btn ghost sm" href="?page={{ page_obj.next_page_number }}&q={{ q }}&status={{ status }}">Next</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
