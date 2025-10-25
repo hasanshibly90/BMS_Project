@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="h1">Occupancy for {{ flat.unit }}-{{ flat.floor|stringformat:"02d" }}</h1>
+  <div class="sub">Assign or end the current Owner / Lessee</div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h2 class="card-title">Owner</h2>
+    {% if active_owner %}
+      <span class="badge ok">Active</span>
+    {% else %}
+      <span class="badge muted">None</span>
+    {% endif %}
+  </div>
+
+  {% if active_owner %}
+    <p><strong>{{ active_owner.owner.name }}</strong></p>
+    <p class="muted">From {{ active_owner.start_date }} to {{ active_owner.end_date|default:"present" }}</p>
+    <form method="post" action="{% url 'flats:end_owner' flat.pk %}">
+      {% csrf_token %}
+      <button class="btn ghost" type="submit">End owner now</button>
+    </form>
+  {% endif %}
+
+  <hr style="border-color:var(--line);margin:14px 0">
+
+  <form method="post" action="{% url 'flats:assign_owner' flat.pk %}" class="form">
+    {% csrf_token %}
+    <p>
+      <label><strong>Owner</strong></label><br>
+      {{ ownership_form.owner }}
+    </p>
+    <p>
+      <label><strong>Start date</strong></label><br>
+      {{ ownership_form.start_date }}
+    </p>
+    <p>
+      <label><strong>End date (optional)</strong></label><br>
+      {{ ownership_form.end_date }}
+    </p>
+    <div class="form-actions">
+      <button class="btn" type="submit">Assign owner</button>
+      <a class="btn ghost" href="{% url 'flats:list' %}">Back to list</a>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h2 class="card-title">Lessee</h2>
+    {% if active_lessee %}
+      <span class="badge info">Active</span>
+    {% else %}
+      <span class="badge muted">None</span>
+    {% endif %}
+  </div>
+
+  {% if active_lessee %}
+    <p><strong>{{ active_lessee.lessee.name }}</strong></p>
+    <p class="muted">From {{ active_lessee.start_date }} to {{ active_lessee.end_date|default:"present" }}</p>
+    <form method="post" action="{% url 'flats:end_lessee' flat.pk %}">
+      {% csrf_token %}
+      <button class="btn ghost" type="submit">End lessee now</button>
+    </form>
+  {% endif %}
+
+  <hr style="border-color:var(--line);margin:14px 0">
+
+  <form method="post" action="{% url 'flats:assign_lessee' flat.pk %}" class="form">
+    {% csrf_token %}
+    <p>
+      <label><strong>Lessee</strong></label><br>
+      {{ tenancy_form.lessee }}
+    </p>
+    <p>
+      <label><strong>Start date</strong></label><br>
+      {{ tenancy_form.start_date }}
+    </p>
+    <p>
+      <label><strong>End date (optional)</strong></label><br>
+      {{ tenancy_form.end_date }}
+    </p>
+    <div class="form-actions">
+      <button class="btn" type="submit">Assign lessee</button>
+      <a class="btn ghost" href="{% url 'flats:list' %}">Back to list</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -3,7 +3,7 @@
 
 <div class="page-head">
   <h1 class="h1">Flats</h1>
-  <div class="sub">Filter, edit status inline, and manage units</div>
+  <div class="sub">Filter, edit status inline, manage occupancy</div>
 </div>
 
 <div class="kpi-grid">
@@ -42,9 +42,10 @@
         <th>Flat</th>
         <th>Floor</th>
         <th>Status</th>
+        <th>Current occupant</th>
         <th>Remarks</th>
         <th style="width:160px">Update status</th>
-        <th></th>
+        <th style="width:140px"></th>
       </tr>
     </thead>
     <tbody>
@@ -61,6 +62,7 @@
             <span class="badge muted">Vacant</span>
           {% endif %}
         </td>
+        <td>{{ o.occupant_label }}</td>
         <td>{{ o.remarks }}</td>
         <td>
           <form method="post" action="{% url 'flats:status' o.pk %}" data-autosubmit>
@@ -75,10 +77,11 @@
         </td>
         <td>
           <a class="btn ghost" href="{% url 'flats:edit' o.pk %}">Edit</a>
+          <a class="btn" href="{% url 'flats:occupancy' o.pk %}">Occupancy</a>
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="6" class="muted">No flats found.</td></tr>
+      <tr><td colspan="7" class="muted">No flats found.</td></tr>
       {% endfor %}
     </tbody>
   </table>

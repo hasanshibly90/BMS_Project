@@ -1,11 +1,16 @@
-from django.urls import reverse_lazy
-from django.views.generic import ListView, CreateView, UpdateView, View
+from django.urls import reverse_lazy, reverse
+from django.views.generic import ListView, CreateView, UpdateView, TemplateView, View
 from django.shortcuts import redirect, get_object_or_404
 from django.contrib import messages
 from django.db.models import Count, Q
+from django.utils import timezone
 
 from .models import Flat
 from .forms import FlatForm
+
+# For occupancy editors
+from people.forms import OwnershipForm, TenancyForm
+from people.models import Ownership, Tenancy
 
 
 class FlatListView(ListView):
@@ -21,7 +26,6 @@ class FlatListView(ListView):
         floor = (self.request.GET.get('floor') or '').strip()
 
         if q:
-            # numeric -> filter by floor, else try unit/remarks
             if q.isdigit():
                 qs = qs.filter(floor=int(q))
             else:
@@ -37,23 +41,17 @@ class FlatListView(ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-
-        # filters
         ctx['q'] = (self.request.GET.get('q') or '').strip()
         ctx['status'] = (self.request.GET.get('status') or '').strip()
         ctx['floor'] = (self.request.GET.get('floor') or '').strip()
 
-        # counts
         counts = dict(
-            Flat.objects.values_list('status_hint')
-            .annotate(c=Count('id'))
-            .values_list('status_hint', 'c')
+            Flat.objects.values_list('status_hint').annotate(c=Count('id')).values_list('status_hint', 'c')
         )
         ctx['cnt_owner'] = counts.get('owner', 0)
         ctx['cnt_rented'] = counts.get('rented', 0)
         ctx['cnt_vacant'] = counts.get('vacant', 0)
 
-        # for selects
         ctx['floors'] = list(range(1, 15))
         ctx['status_choices'] = Flat.STATUS_CHOICES
         return ctx
@@ -86,3 +84,103 @@ class FlatStatusUpdateView(View):
         else:
             messages.error(request, 'Invalid status.')
         return redirect(request.META.get('HTTP_REFERER') or reverse_lazy('flats:list'))
+
+
+# -------------------- OCCUPANCY EDITORS (by flat) -----------------------------
+
+class FlatOccupancyView(TemplateView):
+    template_name = "flats/occupancy.html"
+
+    def get_context_data(self, pk, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        flat = get_object_or_404(Flat, pk=pk)
+        ctx["flat"] = flat
+        ctx["active_owner"] = flat.active_ownership()
+        ctx["active_lessee"] = flat.active_tenancy()
+        ctx["ownership_form"] = OwnershipForm()
+        ctx["tenancy_form"] = TenancyForm()
+        return ctx
+
+
+class AssignOwnerView(View):
+    """Create/replace current ownership for a flat, and sync status to 'owner'."""
+    def post(self, request, pk):
+        flat = get_object_or_404(Flat, pk=pk)
+        form = OwnershipForm(request.POST)
+        if form.is_valid():
+            start = form.cleaned_data["start_date"]
+            owner = form.cleaned_data["owner"]
+            # Close any active ownership
+            current = flat.active_ownership()
+            if current and current.start_date <= start and current.end_date is None:
+                current.end_date = start
+                current.save(update_fields=["end_date"])
+            # Create new record
+            Ownership.objects.create(flat=flat, owner=owner, start_date=start, end_date=form.cleaned_data.get("end_date"))
+            # Sync status
+            flat.status_hint = Flat.OWNER_OCCUPIED
+            flat.save(update_fields=["status_hint"])
+            messages.success(request, f"Owner assigned to {flat}.")
+        else:
+            messages.error(request, "Invalid owner assignment.")
+        return redirect(reverse("flats:occupancy", args=[flat.pk]))
+
+
+class EndOwnerView(View):
+    """End current owner; if no lessee active, set status to 'vacant'."""
+    def post(self, request, pk):
+        flat = get_object_or_404(Flat, pk=pk)
+        current = flat.active_ownership()
+        if current:
+            current.end_date = timezone.now().date()
+            current.save(update_fields=["end_date"])
+            # If no lessee active, mark vacant
+            if flat.active_tenancy() is None:
+                flat.status_hint = Flat.VACANT
+                flat.save(update_fields=["status_hint"])
+            messages.success(request, f"Ended owner for {flat}.")
+        else:
+            messages.info(request, "No active owner to end.")
+        return redirect(reverse("flats:occupancy", args=[flat.pk]))
+
+
+class AssignLesseeView(View):
+    """Create/replace current tenancy for a flat, and sync status to 'rented'."""
+    def post(self, request, pk):
+        flat = get_object_or_404(Flat, pk=pk)
+        form = TenancyForm(request.POST)
+        if form.is_valid():
+            start = form.cleaned_data["start_date"]
+            lessee = form.cleaned_data["lessee"]
+            # Close any active tenancy
+            current = flat.active_tenancy()
+            if current and current.start_date <= start and current.end_date is None:
+                current.end_date = start
+                current.save(update_fields=["end_date"])
+            # Create new record
+            Tenancy.objects.create(flat=flat, lessee=lessee, start_date=start, end_date=form.cleaned_data.get("end_date"))
+            # Sync status
+            flat.status_hint = Flat.RENTED
+            flat.save(update_fields=["status_hint"])
+            messages.success(request, f"Lessee assigned to {flat}.")
+        else:
+            messages.error(request, "Invalid lessee assignment.")
+        return redirect(reverse("flats:occupancy", args=[flat.pk]))
+
+
+class EndLesseeView(View):
+    """End current lessee; if no owner active, set status to 'vacant'."""
+    def post(self, request, pk):
+        flat = get_object_or_404(Flat, pk=pk)
+        current = flat.active_tenancy()
+        if current:
+            current.end_date = timezone.now().date()
+            current.save(update_fields=["end_date"])
+            # If no owner active, mark vacant
+            if flat.active_ownership() is None:
+                flat.status_hint = Flat.VACANT
+                flat.save(update_fields=["status_hint"])
+            messages.success(request, f"Ended lessee for {flat}.")
+        else:
+            messages.info(request, "No active lessee to end.")
+        return redirect(reverse("flats:occupancy", args=[flat.pk]))
