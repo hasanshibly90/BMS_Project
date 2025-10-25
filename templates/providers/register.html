@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-head">
+  <h1 class="h1">Service Provider Registration</h1>
+  <div class="sub">Select your category and fill in the details below</div>
+</div>
+
+<div class="card">
+  <form method="post" enctype="multipart/form-data" class="form">
+    {% csrf_token %}
+
+    <p>
+      <label for="{{ form.category.id_for_label }}"><strong>Category*</strong></label><br>
+      {{ form.category }}
+    </p>
+
+    <p>
+      <label for="{{ form.full_name.id_for_label }}"><strong>Full name*</strong></label><br>
+      {{ form.full_name }}
+    </p>
+
+    <p>
+      <label for="{{ form.phone.id_for_label }}"><strong>Phone</strong></label><br>
+      {{ form.phone }}
+    </p>
+
+    <p>
+      <label for="{{ form.email.id_for_label }}"><strong>Email</strong></label><br>
+      {{ form.email }}
+    </p>
+
+    <p>
+      <label for="{{ form.address.id_for_label }}"><strong>Address</strong></label><br>
+      {{ form.address }}
+    </p>
+
+    <p>
+      <label for="{{ form.nid_number.id_for_label }}"><strong>NID / ID Number</strong></label><br>
+      {{ form.nid_number }}
+    </p>
+
+    <p>
+      <label for="{{ form.experience_years.id_for_label }}"><strong>Experience (years)</strong></label><br>
+      {{ form.experience_years }}
+    </p>
+
+    <p>
+      <label for="{{ form.notes.id_for_label }}"><strong>Notes</strong></label><br>
+      {{ form.notes }}
+    </p>
+
+    <p>
+      <label for="{{ form.photo.id_for_label }}"><strong>Photo</strong></label><br>
+      {{ form.photo }}
+    </p>
+
+    <div class="form-actions">
+      <button class="btn" type="submit">Register</button>
+      <a class="btn ghost" href="/">Cancel</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

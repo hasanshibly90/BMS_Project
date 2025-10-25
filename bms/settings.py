@@ -23,12 +23,14 @@ INSTALLED_APPS = [
     "django.contrib.humanize",
 ]
 
-LOCAL_APPS = ["core", "flats", "people", "parking", "elections"]
+# Add all local apps here; they will be appended if importable
+LOCAL_APPS = ["core", "flats", "people", "parking", "elections", "providers"]
 for app in LOCAL_APPS:
     try:
         import_module(app)
         INSTALLED_APPS.append(app)
     except ModuleNotFoundError:
+        # App not present yet; ignore
         pass
 
 MIDDLEWARE = [
@@ -62,6 +64,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "bms.wsgi.application"
 
+# Database
 if os.environ.get("POSTGRES_DB"):
     DATABASES = {
         "default": {
