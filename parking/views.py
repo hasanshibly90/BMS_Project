@@ -1,10 +1,13 @@
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q
+from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.utils import timezone
+from django.views import View
 from django.views.generic import ListView, CreateView, UpdateView, DetailView
 
+from flats.models import Flat
 from .models import Vehicle, ParkingSpot, ParkingAssignment
 from .forms import VehicleForm, ParkingSpotForm
 
@@ -162,3 +165,47 @@ class SpotDetailView(DetailView):
         pa = spot.active_assignment()
         ctx["active_assignment"] = pa
         return ctx
+
+
+class SpotSeedAllView(View):
+    """
+    Create/align one ParkingSpot per Flat:
+      - code = "<UNIT>-<FLOOR two-digits>" e.g., "E-10"
+      - link spot.flat = Flat (OneToOne)
+      - default level=1, is_reserved=True for dedicated spots
+    Existing unlinked spots are kept as-is.
+    """
+    def post(self, request):
+        created = 0
+        updated = 0
+        for flat in Flat.objects.all().order_by("floor", "unit"):
+            code = f"{flat.unit}-{flat.floor:02d}"
+
+            # If this flat already has a dedicated spot, keep it but sync the code if free
+            spot = getattr(flat, "parking_spot", None)
+            if spot:
+                if spot.code != code and not ParkingSpot.objects.filter(code=code).exclude(pk=spot.pk).exists():
+                    spot.code = code
+                    spot.save(update_fields=["code"])
+                updated += 1
+                continue
+
+            # Otherwise create a new dedicated spot for this flat (avoid code collision)
+            code_to_use = code
+            if ParkingSpot.objects.filter(code=code_to_use).exists():
+                # Rare case: fall back to unique suffix
+                n = 2
+                while ParkingSpot.objects.filter(code=f"{code}-{n}").exists():
+                    n += 1
+                code_to_use = f"{code}-{n}"
+
+            ParkingSpot.objects.create(
+                code=code_to_use,
+                level=1,
+                is_reserved=True,
+                flat=flat,
+            )
+            created += 1
+
+        messages.success(request, f"Parking spots synced from flats. Created {created}, updated {updated}.")
+        return redirect("parking:spot_list")
