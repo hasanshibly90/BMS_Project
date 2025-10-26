@@ -2,7 +2,8 @@
 from django.core.exceptions import ValidationError
 
 from flats.models import Flat
-from people.models import Owner, Lessee  # you already use these across the project
+from people.models import Owner, Lessee
+
 
 class ExternalOwner(models.Model):
     UBER_DRIVER = "UBER_DRIVER"
@@ -11,30 +12,44 @@ class ExternalOwner(models.Model):
         (UBER_DRIVER, "Uber driver"),
         (RENTAL_COMPANY, "Rental company"),
     ]
+
     kind = models.CharField(max_length=20, choices=KIND_CHOICES)
     name = models.CharField(max_length=120)
     phone = models.CharField(max_length=40, blank=True)
     company = models.CharField(max_length=120, blank=True)
+
     def __str__(self):
         label = dict(self.KIND_CHOICES).get(self.kind, self.kind.title())
         return f"{self.name} ({label}{', ' + self.company if self.company else ''})"
+
 
 class ParkingSpot(models.Model):
     code = models.CharField(max_length=10, unique=True, help_text="e.g., P-01")
     level = models.PositiveSmallIntegerField(default=1)
     is_reserved = models.BooleanField(default=False)
-    notes = models.CharField(max_length=255, blank=True)
+    notes = models.CharField(max_length=255, blank=True, default="")
+
     class Meta:
         ordering = ["code"]
-    def __str__(self): return self.code
+
+    def __str__(self):
+        return self.code
+
 
 class Vehicle(models.Model):
     CAR = "CAR"; BIKE = "BIKE"; MICROBUS = "MICROBUS"; TRUCK = "TRUCK"; OTHER = "OTHER"
-    V_TYPES = [(CAR,"Car"),(BIKE,"Bike"),(MICROBUS,"Microbus"),(TRUCK,"Truck"),(OTHER,"Other")]
+    V_TYPES = [
+        (CAR, "Car"), (BIKE, "Bike"), (MICROBUS, "Microbus"), (TRUCK, "Truck"), (OTHER, "Other")
+    ]
 
     OWNER = "OWNER"; LESSEE = "LESSEE"
     UBER_DRIVER = ExternalOwner.UBER_DRIVER; RENTAL_COMPANY = ExternalOwner.RENTAL_COMPANY
-    OWNER_TYPES = [(OWNER,"Owner"),(LESSEE,"Lessee"),(UBER_DRIVER,"Uber driver"),(RENTAL_COMPANY,"Rental company")]
+    OWNER_TYPES = [
+        (OWNER, "Owner"),
+        (LESSEE, "Lessee"),
+        (UBER_DRIVER, "Uber driver"),
+        (RENTAL_COMPANY, "Rental company"),
+    ]
 
     plate_no = models.CharField(max_length=20, unique=True)
     vehicle_type = models.CharField(max_length=20, choices=V_TYPES, default=CAR)
@@ -46,19 +61,27 @@ class Vehicle(models.Model):
     owner_type = models.CharField(max_length=20, choices=OWNER_TYPES)
     owner = models.ForeignKey(Owner, null=True, blank=True, on_delete=models.SET_NULL, related_name="vehicles")
     lessee = models.ForeignKey(Lessee, null=True, blank=True, on_delete=models.SET_NULL, related_name="vehicles")
-    external_owner = models.ForeignKey('ExternalOwner', null=True, blank=True, on_delete=models.SET_NULL, related_name="vehicles")
+    external_owner = models.ForeignKey(
+        ExternalOwner, null=True, blank=True, on_delete=models.SET_NULL, related_name="vehicles"
+    )
 
     flat = models.ForeignKey(Flat, null=True, blank=True, on_delete=models.SET_NULL, related_name="vehicles")
 
     is_active = models.BooleanField(default=True)
-    notes = models.CharField(max_length=255, blank=True)
+    notes = models.CharField(max_length=255, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta: ordering = ["plate_no"]
-    def __str__(self): return self.plate_no
+    class Meta:
+        ordering = ["plate_no"]
+
+    def __str__(self):
+        return self.plate_no
+
     def save(self, *args, **kwargs):
-        if self.plate_no: self.plate_no = self.plate_no.upper().replace(" ", "")
+        if self.plate_no:
+            self.plate_no = self.plate_no.upper().replace(" ", "")
         super().save(*args, **kwargs)
+
     def clean(self):
         picks = [self.owner_id, self.lessee_id, self.external_owner_id]
         if sum(1 for x in picks if x) != 1:
@@ -72,9 +95,12 @@ class Vehicle(models.Model):
 
     @property
     def owner_label(self):
-        if self.owner_id: return f"Owner — {self.owner.name}"
-        if self.lessee_id: return f"Lessee — {self.lessee.name}"
-        if self.external_owner_id: return str(self.external_owner)
+        if self.owner_id:
+            return f"Owner — {self.owner.name}"
+        if self.lessee_id:
+            return f"Lessee — {self.lessee.name}"
+        if self.external_owner_id:
+            return str(self.external_owner)
         return "—"
 
     @property
@@ -83,14 +109,17 @@ class Vehicle(models.Model):
             if self.owner_id:
                 from people.models import Ownership
                 o = Ownership.objects.filter(owner_id=self.owner_id, end_date__isnull=True).select_related("flat").first()
-                if o: return f"{o.flat.unit}-{o.flat.floor:02d}"
+                if o:
+                    return f"{o.flat.unit}-{o.flat.floor:02d}"
             if self.lessee_id:
                 from people.models import Tenancy
                 t = Tenancy.objects.filter(lessee_id=self.lessee_id, end_date__isnull=True).select_related("flat").first()
-                if t: return f"{t.flat.unit}-{t.flat.floor:02d}"
+                if t:
+                    return f"{t.flat.unit}-{t.flat.floor:02d}"
         except Exception:
             pass
-        if self.flat_id and self.flat: return f"{self.flat.unit}-{self.flat.floor:02d}"
+        if self.flat_id and self.flat:
+            return f"{self.flat.unit}-{self.flat.floor:02d}"
         return None
 
     @property
@@ -98,23 +127,40 @@ class Vehicle(models.Model):
         rel = getattr(self, "assignments", None)
         return rel.filter(end_date__isnull=True).select_related("spot").first() if rel is not None else None
 
+
 class ParkingAssignment(models.Model):
-    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name="assignments")
+    vehicle = models.ForeignKey(
+        Vehicle, on_delete=models.CASCADE, related_name="assignments",
+        null=True, blank=True
+    )
     spot = models.ForeignKey(ParkingSpot, on_delete=models.CASCADE, related_name="assignments")
     start_date = models.DateField()
     end_date = models.DateField(blank=True, null=True)
-    remarks = models.CharField(max_length=255, blank=True)
+    remarks = models.CharField(max_length=255, blank=True, default="")
+
     class Meta:
         ordering = ["-start_date"]
         constraints = [
-            models.UniqueConstraint(fields=["vehicle"], condition=models.Q(end_date__isnull=True), name="one_active_assignment_per_vehicle"),
-            models.UniqueConstraint(fields=["spot"], condition=models.Q(end_date__isnull=True), name="one_active_assignment_per_spot"),
+            models.UniqueConstraint(
+                fields=["vehicle"],
+                condition=models.Q(end_date__isnull=True, vehicle__isnull=False),
+                name="one_active_assignment_per_vehicle",
+            ),
+            models.UniqueConstraint(
+                fields=["spot"],
+                condition=models.Q(end_date__isnull=True),
+                name="one_active_assignment_per_spot",
+            ),
         ]
+
     def __str__(self):
         span = f"{self.start_date} → {self.end_date or 'present'}"
-        return f"{self.vehicle.plate_no} → {self.spot} ({span})"
+        return f"{self.vehicle.plate_no if self.vehicle_id else '—'} → {self.spot} ({span})"
+
     @property
-    def is_active(self): return self.end_date is None
+    def is_active(self):
+        return self.end_date is None
+
     def clean(self):
         if self.end_date and self.end_date < self.start_date:
             raise ValidationError("End date cannot be before start date.")

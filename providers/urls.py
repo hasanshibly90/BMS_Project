@@ -1,20 +1,14 @@
-# providers/urls.py
 from django.urls import path
 from .views import (
-    ProviderListView,
-    ProviderCreateView,
-    ProviderUpdateView,
-    ProviderDeleteView,
+    ServiceProviderListView,
+    ServiceProviderCreateView,
+    ServiceProviderUpdateView,
 )
 
 app_name = "providers"
 
 urlpatterns = [
-    # List + Register
-    path("list/",     ProviderListView.as_view(),    name="list"),
-    path("register/", ProviderCreateView.as_view(),  name="register"),
-
-    # Edit + Delete (names used by your template)
-    path("<int:pk>/edit/",   ProviderUpdateView.as_view(), name="edit"),
-    path("<int:pk>/delete/", ProviderDeleteView.as_view(), name="delete"),
+    path("", ServiceProviderListView.as_view(), name="list"),
+    path("register/", ServiceProviderCreateView.as_view(), name="register"),
+    path("<int:pk>/edit/", ServiceProviderUpdateView.as_view(), name="edit"),
 ]

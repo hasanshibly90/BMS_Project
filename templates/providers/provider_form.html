@@ -1,27 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
-
 <div class="page-head">
-  <h1 class="h1">{% if object %}Edit{% else %}Add new{% endif %} Service Provider</h1>
-  <div class="sub">Choose a category (created in Admin) and fill in the details</div>
+  <h1 class="h1">{% if object %}Update provider{% else %}Register provider{% endif %}</h1>
+  <div class="sub">Fill the form and submit.</div>
 </div>
 
 <div class="card">
   <form method="post" enctype="multipart/form-data" class="form">
     {% csrf_token %}
-    {% for field in form %}
-      <p>
-        <label for="{{ field.id_for_label }}"><strong>{{ field.label }}</strong></label><br>
-        {{ field }}
-        {% if field.help_text %}<br><small class="muted">{{ field.help_text }}</small>{% endif %}
-        {% for e in field.errors %}<div class="msg error">{{ e }}</div>{% endfor %}
-      </p>
-    {% endfor %}
+    {{ form.as_p }}
     <div class="form-actions">
-      <button class="btn" type="submit">Save</button>
+      <button class="btn" type="submit">{% if object %}Save changes{% else %}Create{% endif %}</button>
       <a class="btn ghost" href="{% url 'providers:list' %}">Cancel</a>
     </div>
   </form>
 </div>
-
 {% endblock %}

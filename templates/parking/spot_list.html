@@ -14,7 +14,8 @@
     <tbody>
       {% for s in object_list %}
       <tr>
-        <td>{{ s.code }}</td><td>{{ s.level }}</td>
+        <td>{{ s.code }}</td>
+        <td>{{ s.level }}</td>
         <td>{% if s.is_reserved %}<span class="badge info">Yes</span>{% else %}<span class="badge muted">No</span>{% endif %}</td>
         <td>{{ s.notes }}</td>
       </tr>

@@ -8,19 +8,27 @@ from django.views.generic import ListView, CreateView, UpdateView
 from .models import Vehicle, ParkingSpot, ParkingAssignment
 from .forms import VehicleForm
 
+
 class VehicleListView(ListView):
     model = Vehicle
     template_name = "parking/vehicle_list.html"
     paginate_by = 30
+
     def get_queryset(self):
-        qs = Vehicle.objects.select_related("owner","lessee","external_owner").order_by("plate_no")
+        qs = Vehicle.objects.select_related("owner", "lessee", "external_owner").order_by("plate_no")
         q = (self.request.GET.get("q") or "").strip()
         kind = (self.request.GET.get("owner_type") or "").strip()
         if q:
-            qs = qs.filter(Q(plate_no__icontains=q)|Q(owner__name__icontains=q)|Q(lessee__name__icontains=q)|Q(external_owner__name__icontains=q))
+            qs = qs.filter(
+                Q(plate_no__icontains=q) |
+                Q(owner__name__icontains=q) |
+                Q(lessee__name__icontains=q) |
+                Q(external_owner__name__icontains=q)
+            )
         if kind and kind in dict(Vehicle.OWNER_TYPES):
             qs = qs.filter(owner_type=kind)
         return qs
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["q"] = (self.request.GET.get("q") or "").strip()
@@ -28,11 +36,13 @@ class VehicleListView(ListView):
         ctx["owner_types"] = Vehicle.OWNER_TYPES
         return ctx
 
+
 class VehicleCreateView(CreateView):
     model = Vehicle
     form_class = VehicleForm
     template_name = "parking/vehicle_form.html"
     success_url = reverse_lazy("parking:vehicle_list")
+
     @transaction.atomic
     def form_valid(self, form):
         resp = super().form_valid(form)
@@ -42,17 +52,23 @@ class VehicleCreateView(CreateView):
             if prev:
                 prev.end_date = form.cleaned_data.get("start_date") or timezone.localdate()
                 prev.save(update_fields=["end_date"])
-            ParkingAssignment.objects.create(vehicle=v, spot=form.cleaned_data["spot"], start_date=form.cleaned_data.get("start_date") or timezone.localdate())
+            ParkingAssignment.objects.create(
+                vehicle=v,
+                spot=form.cleaned_data["spot"],
+                start_date=form.cleaned_data.get("start_date") or timezone.localdate(),
+            )
             messages.success(self.request, "Vehicle saved and parking assigned.")
         else:
             messages.success(self.request, "Vehicle saved.")
         return resp
+
 
 class VehicleUpdateView(UpdateView):
     model = Vehicle
     form_class = VehicleForm
     template_name = "parking/vehicle_form.html"
     success_url = reverse_lazy("parking:vehicle_list")
+
     @transaction.atomic
     def form_valid(self, form):
         resp = super().form_valid(form)
@@ -62,11 +78,16 @@ class VehicleUpdateView(UpdateView):
             if prev:
                 prev.end_date = form.cleaned_data.get("start_date") or timezone.localdate()
                 prev.save(update_fields=["end_date"])
-            ParkingAssignment.objects.create(vehicle=v, spot=form.cleaned_data["spot"], start_date=form.cleaned_data.get("start_date") or timezone.localdate())
+            ParkingAssignment.objects.create(
+                vehicle=v,
+                spot=form.cleaned_data["spot"],
+                start_date=form.cleaned_data.get("start_date") or timezone.localdate(),
+            )
             messages.success(self.request, "Vehicle updated and parking assigned.")
         else:
             messages.success(self.request, "Vehicle updated.")
         return resp
+
 
 class SpotListView(ListView):
     model = ParkingSpot
