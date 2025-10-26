@@ -2,7 +2,7 @@
 {% block content %}
 <div class="page-head">
   <h1 class="h1">Vehicles</h1>
-  <div class="sub">Owners / Lessees / Uber drivers / Rental companies — with live parking info.</div>
+  <div class="sub">Owners / Lessees / Uber drivers / Rental companies — with live parking.</div>
 </div>
 
 <div class="card">
@@ -49,5 +49,7 @@
       {% endfor %}
     </tbody>
   </table>
+
+  {% include "_includes/pager.html" %}
 </div>
 {% endblock %}

@@ -1,0 +1,58 @@
+{% comment %}
+Inputs expected:
+- per_page (str), per_page_options (list[str]), base_qs (string like "&foo=1&bar=2")
+- paginator, page_obj may be absent when pagination disabled
+{% endcomment %}
+
+<div class="pager" style="display:flex; align-items:center; gap:12px; margin-top:12px; flex-wrap:wrap;">
+  <form method="get" style="display:flex; align-items:center; gap:6px;">
+    {% if request.GET %}
+      {% for k,v in request.GET.items %}
+        {% if k != "per_page" and k != "page" %}
+          <input type="hidden" name="{{ k }}" value="{{ v }}">
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    <label class="muted">Rows per page</label>
+    <select name="per_page" onchange="this.form.submit()">
+      {% for opt in per_page_options %}
+        <option value="{{ opt }}"
+          {% if per_page|stringformat:"s" == opt|stringformat:"s" %}selected{% endif %}>
+          {% if opt == 'all' %}All{% else %}{{ opt }}{% endif %}
+        </option>
+      {% endfor %}
+    </select>
+    <noscript><button class="btn" type="submit">Apply</button></noscript>
+  </form>
+
+  {% if paginator %}
+    <span class="muted">
+      Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ paginator.count }}
+    </span>
+    <div class="pages" style="display:flex; gap:6px; align-items:center;">
+      {% if page_obj.has_previous %}
+        <a class="btn ghost sm" href="?page={{ page_obj.previous_page_number }}{{ base_qs }}&per_page={{ per_page }}">Prev</a>
+      {% else %}
+        <span class="btn ghost sm disabled">Prev</span>
+      {% endif %}
+
+      {% for num in paginator.page_range %}
+        {% if num == page_obj.number %}
+          <span class="btn sm" style="pointer-events:none;">{{ num }}</span>
+        {% elif num <= 2 or num > paginator.num_pages|add:-2 or num|add:-page_obj.number|abs <= 2 %}
+          <a class="btn ghost sm" href="?page={{ num }}{{ base_qs }}&per_page={{ per_page }}">{{ num }}</a>
+        {% elif num == 3 or num == paginator.num_pages|add:-2 %}
+          <span class="muted">…</span>
+        {% endif %}
+      {% endfor %}
+
+      {% if page_obj.has_next %}
+        <a class="btn ghost sm" href="?page={{ page_obj.next_page_number }}{{ base_qs }}&per_page={{ per_page }}">Next</a>
+      {% else %}
+        <span class="btn ghost sm disabled">Next</span>
+      {% endif %}
+    </div>
+  {% else %}
+    <span class="muted">Showing all results</span>
+  {% endif %}
+</div>

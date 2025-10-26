@@ -67,11 +67,7 @@
         <td>{{ s.flat|default:"—" }}</td>
         <td>{{ s.level }}</td>
         <td>{% if s.is_reserved %}<span class="badge info">Yes</span>{% else %}<span class="badge muted">No</span>{% endif %}</td>
-        <td>
-          {% if s.is_occupied %}<span class="badge ok">Occupied</span>
-          {% else %}<span class="badge muted">Free</span>
-          {% endif %}
-        </td>
+        <td>{% if s.occupied %}<span class="badge ok">Occupied</span>{% else %}<span class="badge muted">Free</span>{% endif %}</td>
         <td>{{ s.notes }}</td>
         <td>
           <a class="btn ghost" href="{% url 'parking:spot_detail' s.pk %}">View</a>
@@ -83,5 +79,7 @@
       {% endfor %}
     </tbody>
   </table>
+
+  {% include "_includes/pager.html" %}
 </div>
 {% endblock %}
