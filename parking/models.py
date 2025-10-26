@@ -29,6 +29,12 @@ class ParkingSpot(models.Model):
     is_reserved = models.BooleanField(default=False)
     notes = models.CharField(max_length=255, blank=True, default="")
 
+    # Link a spot to a Flat when the building allocates a dedicated bay.
+    # This creates f.parking_spot on Flat (what /overview/ is using).
+    flat = models.OneToOneField(
+        Flat, null=True, blank=True, on_delete=models.SET_NULL, related_name="parking_spot"
+    )
+
     class Meta:
         ordering = ["code"]
 
@@ -38,9 +44,7 @@ class ParkingSpot(models.Model):
 
 class Vehicle(models.Model):
     CAR = "CAR"; BIKE = "BIKE"; MICROBUS = "MICROBUS"; TRUCK = "TRUCK"; OTHER = "OTHER"
-    V_TYPES = [
-        (CAR, "Car"), (BIKE, "Bike"), (MICROBUS, "Microbus"), (TRUCK, "Truck"), (OTHER, "Other")
-    ]
+    V_TYPES = [(CAR, "Car"), (BIKE, "Bike"), (MICROBUS, "Microbus"), (TRUCK, "Truck"), (OTHER, "Other")]
 
     OWNER = "OWNER"; LESSEE = "LESSEE"
     UBER_DRIVER = ExternalOwner.UBER_DRIVER; RENTAL_COMPANY = ExternalOwner.RENTAL_COMPANY
@@ -65,6 +69,7 @@ class Vehicle(models.Model):
         ExternalOwner, null=True, blank=True, on_delete=models.SET_NULL, related_name="vehicles"
     )
 
+    # Optional manual link to a flat (useful for externals or edge cases)
     flat = models.ForeignKey(Flat, null=True, blank=True, on_delete=models.SET_NULL, related_name="vehicles")
 
     is_active = models.BooleanField(default=True)
@@ -109,17 +114,14 @@ class Vehicle(models.Model):
             if self.owner_id:
                 from people.models import Ownership
                 o = Ownership.objects.filter(owner_id=self.owner_id, end_date__isnull=True).select_related("flat").first()
-                if o:
-                    return f"{o.flat.unit}-{o.flat.floor:02d}"
+                if o: return f"{o.flat.unit}-{o.flat.floor:02d}"
             if self.lessee_id:
                 from people.models import Tenancy
                 t = Tenancy.objects.filter(lessee_id=self.lessee_id, end_date__isnull=True).select_related("flat").first()
-                if t:
-                    return f"{t.flat.unit}-{t.flat.floor:02d}"
+                if t: return f"{t.flat.unit}-{t.flat.floor:02d}"
         except Exception:
             pass
-        if self.flat_id and self.flat:
-            return f"{self.flat.unit}-{self.flat.floor:02d}"
+        if self.flat_id and self.flat: return f"{self.flat.unit}-{self.flat.floor:02d}"
         return None
 
     @property
@@ -131,7 +133,7 @@ class Vehicle(models.Model):
 class ParkingAssignment(models.Model):
     vehicle = models.ForeignKey(
         Vehicle, on_delete=models.CASCADE, related_name="assignments",
-        null=True, blank=True
+        null=True, blank=True  # keep nullable to avoid default prompts on legacy rows
     )
     spot = models.ForeignKey(ParkingSpot, on_delete=models.CASCADE, related_name="assignments")
     start_date = models.DateField()

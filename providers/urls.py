@@ -1,6 +1,6 @@
 from django.urls import path
 
-# Robust imports: prefer Provider*; fall back to ServiceProvider* if needed
+# Prefer Provider*; fall back to ServiceProvider* if that's what your file uses
 try:
     from .views import ProviderListView as ListViewClass
 except Exception:
@@ -19,7 +19,8 @@ except Exception:
 app_name = "providers"
 
 urlpatterns = [
-    path("", ListViewClass.as_view(), name="list"),
+    path("", ListViewClass.as_view(), name="list"),             # /providers/
+    path("list/", ListViewClass.as_view(), name="list_alias"),  # /providers/list/ (alias)
     path("register/", CreateViewClass.as_view(), name="register"),
     path("<int:pk>/edit/", UpdateViewClass.as_view(), name="edit"),
 ]
