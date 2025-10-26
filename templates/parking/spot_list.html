@@ -6,20 +6,15 @@
 </div>
 
 <div class="card">
-  <div class="toolbar">
-    <div class="actions">
-      <a class="btn" href="{% url 'parking:spot_create' %}">Add spot</a>
-      <a class="btn ghost" href="{% url 'parking:vehicle_list' %}">Vehicles</a>
-    </div>
+  <div class="actions">
+    <a class="btn ghost" href="{% url 'parking:vehicle_list' %}">Vehicles</a>
   </div>
-
   <table class="table">
     <thead><tr><th>Code</th><th>Level</th><th>Reserved</th><th>Notes</th></tr></thead>
     <tbody>
       {% for s in object_list %}
       <tr>
-        <td>{{ s.code }}</td>
-        <td>{{ s.level }}</td>
+        <td>{{ s.code }}</td><td>{{ s.level }}</td>
         <td>{% if s.is_reserved %}<span class="badge info">Yes</span>{% else %}<span class="badge muted">No</span>{% endif %}</td>
         <td>{{ s.notes }}</td>
       </tr>

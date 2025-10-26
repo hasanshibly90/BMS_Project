@@ -2,22 +2,13 @@
 {% block content %}
 <div class="page-head">
   <h1 class="h1">{% if object %}Update vehicle{% else %}Register vehicle{% endif %}</h1>
-  <div class="sub">Select who the vehicle belongs to, then optionally assign a parking spot now.</div>
+  <div class="sub">Select the person/company and (optionally) assign a parking spot now.</div>
 </div>
 
 <div class="card">
-  <form method="post" class="form">
-    {% csrf_token %}
-
-    <p>
-      <label><strong>Plate no</strong></label><br>
-      {{ form.plate_no }}
-    </p>
-
-    <p>
-      <label><strong>Type</strong></label><br>
-      {{ form.vehicle_type }}
-    </p>
+  <form method="post" class="form">{% csrf_token %}
+    <p><label><strong>Plate no</strong></label><br>{{ form.plate_no }}</p>
+    <p><label><strong>Type</strong></label><br>{{ form.vehicle_type }}</p>
 
     <div class="grid-2" style="gap:16px">
       <p><label><strong>Make</strong></label><br>{{ form.make }}</p>
@@ -31,16 +22,11 @@
 
     <hr style="border-color:var(--line);margin:14px 0">
 
-    <p>
-      <label><strong>Vehicle belongs to</strong></label><br>
-      {{ form.owner_type }}
-    </p>
+    <p><label><strong>Vehicle belongs to</strong></label><br>{{ form.owner_type }}</p>
 
     <div id="ownerBlock"><p><label><strong>Owner</strong></label><br>{{ form.owner }}</p></div>
     <div id="lesseeBlock"><p><label><strong>Lessee</strong></label><br>{{ form.lessee }}</p></div>
-    <div id="externalBlock"><p><label><strong>External (Uber/Rental)</strong></label><br>{{ form.external_owner }}</p>
-      <small class="muted">Need a new one? Open a new tab to add at <code>/admin/parking/externalowner/</code> and refresh.</small>
-    </div>
+    <div id="externalBlock"><p><label><strong>External (Uber/Rental)</strong></label><br>{{ form.external_owner }}</p></div>
 
     <p><label><strong>Linked flat (optional)</strong></label><br>{{ form.flat }}</p>
     <p><label><strong>Active?</strong></label><br>{{ form.is_active }}</p>
