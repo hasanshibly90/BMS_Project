@@ -18,6 +18,6 @@ urlpatterns = [
     path("spots/<int:pk>/", SpotDetailView.as_view(), name="spot_detail"),
     path("spots/<int:pk>/edit/", SpotUpdateView.as_view(), name="spot_edit"),
 
-    # Bulk create/sync: Flat → ParkingSpot
+    # Bulk
     path("spots/seed/", SpotSeedAllView.as_view(), name="spot_seed_all"),
 ]

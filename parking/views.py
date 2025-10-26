@@ -18,7 +18,7 @@ from .forms import VehicleForm, ParkingSpotForm
 class VehicleListView(ListView):
     model = Vehicle
     template_name = "parking/vehicle_list.html"
-    paginate_by = 30  # default, user can override with ?per_page=...
+    paginate_by = 30  # override with ?per_page=...
 
     def get_paginate_by(self, queryset):
         per = (self.request.GET.get("per_page") or "").strip().lower()
@@ -47,7 +47,6 @@ class VehicleListView(ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        # keep query params except page/per_page for links
         params = self.request.GET.copy()
         params.pop("page", None); params.pop("per_page", None)
         base_qs = urlencode(params, doseq=True)
@@ -60,16 +59,68 @@ class VehicleListView(ListView):
         return ctx
 
 
+class VehicleCreateView(CreateView):
+    model = Vehicle
+    form_class = VehicleForm
+    template_name = "parking/vehicle_form.html"
+    success_url = reverse_lazy("parking:vehicle_list")
+
+    @transaction.atomic
+    def form_valid(self, form):
+        resp = super().form_valid(form)
+        v: Vehicle = self.object
+        if form.cleaned_data.get("assign_parking") and form.cleaned_data.get("spot"):
+            prev = ParkingAssignment.objects.filter(vehicle=v, end_date__isnull=True).first()
+            if prev:
+                prev.end_date = form.cleaned_data.get("start_date") or timezone.localdate()
+                prev.save(update_fields=["end_date"])
+            ParkingAssignment.objects.create(
+                vehicle=v,
+                spot=form.cleaned_data["spot"],
+                start_date=form.cleaned_data.get("start_date") or timezone.localdate(),
+            )
+            messages.success(self.request, "Vehicle saved and parking assigned.")
+        else:
+            messages.success(self.request, "Vehicle saved.")
+        return resp
+
+
+class VehicleUpdateView(UpdateView):
+    model = Vehicle
+    form_class = VehicleForm
+    template_name = "parking/vehicle_form.html"
+    success_url = reverse_lazy("parking:vehicle_list")
+
+    @transaction.atomic
+    def form_valid(self, form):
+        resp = super().form_valid(form)
+        v: Vehicle = self.object
+        if form.cleaned_data.get("assign_parking") and form.cleaned_data.get("spot"):
+            prev = ParkingAssignment.objects.filter(vehicle=v, end_date__isnull=True).first()
+            if prev:
+                prev.end_date = form.cleaned_data.get("start_date") or timezone.localdate()
+                prev.save(update_fields=["end_date"])
+            ParkingAssignment.objects.create(
+                vehicle=v,
+                spot=form.cleaned_data["spot"],
+                start_date=form.cleaned_data.get("start_date") or timezone.localdate(),
+            )
+            messages.success(self.request, "Vehicle updated and parking assigned.")
+        else:
+            messages.success(self.request, "Vehicle updated.")
+        return resp
+
+
 # ───────── Spots ─────────
 class SpotListView(ListView):
     model = ParkingSpot
     template_name = "parking/spot_list.html"
-    paginate_by = None  # DEFAULT: show ALL (you can choose a page size via ?per_page=...)
+    paginate_by = None  # show ALL by default
 
     def get_paginate_by(self, queryset):
         per = (self.request.GET.get("per_page") or "").strip().lower()
         if per in ("", "all"):
-            return None  # show all
+            return None
         try:
             n = int(per)
             return max(1, min(n, 1000))
@@ -77,7 +128,6 @@ class SpotListView(ListView):
             return None
 
     def get_queryset(self):
-        # annotate occupied
         active_qs = ParkingAssignment.objects.filter(spot=OuterRef("pk"), end_date__isnull=True)
         qs = ParkingSpot.objects.select_related("flat").annotate(occupied=Exists(active_qs)).order_by("code")
 
@@ -103,22 +153,18 @@ class SpotListView(ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        # base_qs for page/per_page links
         params = self.request.GET.copy()
         params.pop("page", None); params.pop("per_page", None)
         base_qs = urlencode(params, doseq=True)
         ctx["base_qs"] = ("&" + base_qs) if base_qs else ""
-        # per-page options (include total flats/“All (104)”)
         total_flats = Flat.objects.count()
         ctx["total_flats"] = total_flats
         ctx["per_page"] = (self.request.GET.get("per_page") or "all").lower()
-        # Offer exact 104 (or whatever total_flats is), plus common sizes
         opts = ["25", "50", "100"]
         if str(total_flats) not in opts:
             opts.append(str(total_flats))
         opts.append("all")
         ctx["per_page_options"] = opts
-        # current filter selections
         ctx["unit"] = (self.request.GET.get("unit") or "").strip().upper()
         ctx["floor"] = (self.request.GET.get("floor") or "").strip()
         ctx["reserved"] = (self.request.GET.get("reserved") or "").strip().lower()
