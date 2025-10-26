@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="h1">{% if object %}Update vehicle{% else %}Register vehicle{% endif %}</h1>
+  <div class="sub">Select who the vehicle belongs to, then optionally assign a parking spot now.</div>
+</div>
+
+<div class="card">
+  <form method="post" class="form">
+    {% csrf_token %}
+
+    <p>
+      <label><strong>Plate no</strong></label><br>
+      {{ form.plate_no }}
+    </p>
+
+    <p>
+      <label><strong>Type</strong></label><br>
+      {{ form.vehicle_type }}
+    </p>
+
+    <div class="grid-2" style="gap:16px">
+      <p><label><strong>Make</strong></label><br>{{ form.make }}</p>
+      <p><label><strong>Model</strong></label><br>{{ form.model }}</p>
+    </div>
+
+    <div class="grid-2" style="gap:16px">
+      <p><label><strong>Color</strong></label><br>{{ form.color }}</p>
+      <p><label><strong>RFID / Sticker</strong></label><br>{{ form.tag_no }}</p>
+    </div>
+
+    <hr style="border-color:var(--line);margin:14px 0">
+
+    <p>
+      <label><strong>Vehicle belongs to</strong></label><br>
+      {{ form.owner_type }}
+    </p>
+
+    <div id="ownerBlock"><p><label><strong>Owner</strong></label><br>{{ form.owner }}</p></div>
+    <div id="lesseeBlock"><p><label><strong>Lessee</strong></label><br>{{ form.lessee }}</p></div>
+    <div id="externalBlock"><p><label><strong>External (Uber/Rental)</strong></label><br>{{ form.external_owner }}</p>
+      <small class="muted">Need a new one? Open a new tab to add at <code>/admin/parking/externalowner/</code> and refresh.</small>
+    </div>
+
+    <p><label><strong>Linked flat (optional)</strong></label><br>{{ form.flat }}</p>
+    <p><label><strong>Active?</strong></label><br>{{ form.is_active }}</p>
+    <p><label><strong>Notes</strong></label><br>{{ form.notes }}</p>
+
+    <hr style="border-color:var(--line);margin:14px 0">
+
+    <div class="grid-3" style="gap:16px">
+      <p>{{ form.assign_parking }} <label><strong>Assign parking now?</strong></label></p>
+      <p><label><strong>Spot</strong></label><br>{{ form.spot }}</p>
+      <p><label><strong>Start date</strong></label><br>{{ form.start_date }}</p>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn" type="submit">{% if object %}Save changes{% else %}Create vehicle{% endif %}</button>
+      <a class="btn ghost" href="{% url 'parking:vehicle_list' %}">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+(function(){
+  const ownerType = document.getElementById("id_owner_type");
+  const blocks = {
+    OWNER: document.getElementById("ownerBlock"),
+    LESSEE: document.getElementById("lesseeBlock"),
+    UBER_DRIVER: document.getElementById("externalBlock"),
+    RENTAL_COMPANY: document.getElementById("externalBlock")
+  };
+  function apply() {
+    const v = ownerType.value;
+    for (const k of ["OWNER","LESSEE","UBER_DRIVER","RENTAL_COMPANY"]) {
+      blocks[k].style.display = (k===v) ? "block" : "none";
+    }
+  }
+  ownerType.addEventListener("change", apply);
+  apply();
+})();
+</script>
+{% endblock %}

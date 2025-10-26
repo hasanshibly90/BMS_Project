@@ -1,11 +1,18 @@
 ﻿from django.urls import path
-from .views import SpotListView, SpotDetailView, AssignParkingView, EndParkingView
+from .views import (
+    VehicleListView, VehicleCreateView, VehicleUpdateView,
+    SpotListView, SpotCreateView,
+)
 
 app_name = "parking"
 
 urlpatterns = [
-    path("spots/",                  SpotListView.as_view(),    name="spots"),
-    path("spots/<int:pk>/",         SpotDetailView.as_view(),  name="spot_detail"),
-    path("spots/<int:pk>/assign/",  AssignParkingView.as_view(), name="spot_assign"),
-    path("spots/<int:pk>/end/",     EndParkingView.as_view(),  name="spot_end"),
+    # Vehicles
+    path("vehicles/", VehicleListView.as_view(), name="vehicle_list"),
+    path("vehicles/create/", VehicleCreateView.as_view(), name="vehicle_create"),
+    path("vehicles/<int:pk>/edit/", VehicleUpdateView.as_view(), name="vehicle_edit"),
+
+    # Spots (keeps your Parking nav useful)
+    path("spots/", SpotListView.as_view(), name="spot_list"),
+    path("spots/create/", SpotCreateView.as_view(), name="spot_create"),
 ]

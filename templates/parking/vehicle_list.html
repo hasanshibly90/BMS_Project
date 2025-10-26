@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="h1">Vehicles</h1>
+  <div class="sub">Register vehicles for Owners / Lessees / Uber drivers / Rental companies. Shows live parking.</div>
+</div>
+
+<div class="card">
+  <div class="toolbar">
+    <form method="get" class="filters">
+      <input type="text" name="q" value="{{ q }}" placeholder="Search: plate or name">
+      <select name="owner_type" title="Belongs to">
+        <option value="">All types</option>
+        {% for k, v in owner_types %}
+          <option value="{{ k }}" {% if owner_type == k %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn" type="submit">Filter</button>
+      <a class="btn ghost" href="{% url 'parking:vehicle_list' %}">Reset</a>
+    </form>
+    <div class="actions">
+      <a class="btn" href="{% url 'parking:vehicle_create' %}">Register vehicle</a>
+    </div>
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Plate</th>
+        <th>Type</th>
+        <th>Owner / Lessee</th>
+        <th>Flat</th>
+        <th>Parking</th>
+        <th style="width:160px"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in object_list %}
+      <tr>
+        <td><strong>{{ v.plate_no }}</strong></td>
+        <td>{{ v.get_vehicle_type_display }}</td>
+        <td>{{ v.owner_label }}</td>
+        <td>{{ v.flat_code|default:"—" }}</td>
+        <td>
+          {% with a=v.current_parking %}
+            {% if a %}<span class="badge ok">{{ a.spot.code }}</span> <span class="muted">since {{ a.start_date }}</span>
+            {% else %}<span class="badge muted">None</span>{% endif %}
+          {% endwith %}
+        </td>
+        <td>
+          <a class="btn ghost" href="{% url 'parking:vehicle_edit' v.pk %}">Edit</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted">No vehicles yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
