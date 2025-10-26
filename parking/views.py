@@ -3,7 +3,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.urls import reverse_lazy
 from django.utils import timezone
-from django.views.generic import ListView, CreateView, UpdateView
+from django.views.generic import ListView, CreateView, UpdateView, DetailView
 
 from .models import Vehicle, ParkingSpot, ParkingAssignment
 from .forms import VehicleForm, ParkingSpotForm
@@ -109,7 +109,6 @@ class SpotCreateView(CreateView):
         resp = super().form_valid(form)
         s: ParkingSpot = self.object
         if form.cleaned_data.get("assign_now") and form.cleaned_data.get("vehicle"):
-            # End any active assignment for this spot
             prev = ParkingAssignment.objects.filter(spot=s, end_date__isnull=True).first()
             if prev:
                 prev.end_date = form.cleaned_data.get("start_date") or timezone.localdate()
@@ -137,7 +136,6 @@ class SpotUpdateView(UpdateView):
         resp = super().form_valid(form)
         s: ParkingSpot = self.object
         if form.cleaned_data.get("assign_now") and form.cleaned_data.get("vehicle"):
-            # End any active assignment for this spot
             prev = ParkingAssignment.objects.filter(spot=s, end_date__isnull=True).first()
             if prev:
                 prev.end_date = form.cleaned_data.get("start_date") or timezone.localdate()
@@ -152,3 +150,15 @@ class SpotUpdateView(UpdateView):
         else:
             messages.success(self.request, "Spot updated.")
         return resp
+
+
+class SpotDetailView(DetailView):
+    model = ParkingSpot
+    template_name = "parking/spot_detail.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        spot: ParkingSpot = self.object
+        pa = spot.active_assignment()
+        ctx["active_assignment"] = pa
+        return ctx

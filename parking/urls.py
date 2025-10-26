@@ -1,7 +1,7 @@
 ﻿from django.urls import path
 from .views import (
     VehicleListView, VehicleCreateView, VehicleUpdateView,
-    SpotListView, SpotCreateView, SpotUpdateView,
+    SpotListView, SpotCreateView, SpotUpdateView, SpotDetailView,
 )
 
 app_name = "parking"
@@ -15,5 +15,6 @@ urlpatterns = [
     # Spots
     path("spots/", SpotListView.as_view(), name="spot_list"),
     path("spots/create/", SpotCreateView.as_view(), name="spot_create"),
+    path("spots/<int:pk>/", SpotDetailView.as_view(), name="spot_detail"),   # ← added
     path("spots/<int:pk>/edit/", SpotUpdateView.as_view(), name="spot_edit"),
 ]
