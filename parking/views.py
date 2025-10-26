@@ -6,9 +6,10 @@ from django.utils import timezone
 from django.views.generic import ListView, CreateView, UpdateView
 
 from .models import Vehicle, ParkingSpot, ParkingAssignment
-from .forms import VehicleForm
+from .forms import VehicleForm, ParkingSpotForm
 
 
+# ───────── Vehicles ─────────
 class VehicleListView(ListView):
     model = Vehicle
     template_name = "parking/vehicle_list.html"
@@ -89,8 +90,65 @@ class VehicleUpdateView(UpdateView):
         return resp
 
 
+# ───────── Spots ─────────
 class SpotListView(ListView):
     model = ParkingSpot
     template_name = "parking/spot_list.html"
     paginate_by = 50
     ordering = ["code"]
+
+
+class SpotCreateView(CreateView):
+    model = ParkingSpot
+    form_class = ParkingSpotForm
+    template_name = "parking/spot_form.html"
+    success_url = reverse_lazy("parking:spot_list")
+
+    @transaction.atomic
+    def form_valid(self, form):
+        resp = super().form_valid(form)
+        s: ParkingSpot = self.object
+        if form.cleaned_data.get("assign_now") and form.cleaned_data.get("vehicle"):
+            # End any active assignment for this spot
+            prev = ParkingAssignment.objects.filter(spot=s, end_date__isnull=True).first()
+            if prev:
+                prev.end_date = form.cleaned_data.get("start_date") or timezone.localdate()
+                prev.save(update_fields=["end_date"])
+            ParkingAssignment.objects.create(
+                vehicle=form.cleaned_data["vehicle"],
+                spot=s,
+                start_date=form.cleaned_data.get("start_date") or timezone.localdate(),
+                driver_name=form.cleaned_data.get("driver_name") or "",
+            )
+            messages.success(self.request, "Spot created and assigned.")
+        else:
+            messages.success(self.request, "Spot created.")
+        return resp
+
+
+class SpotUpdateView(UpdateView):
+    model = ParkingSpot
+    form_class = ParkingSpotForm
+    template_name = "parking/spot_form.html"
+    success_url = reverse_lazy("parking:spot_list")
+
+    @transaction.atomic
+    def form_valid(self, form):
+        resp = super().form_valid(form)
+        s: ParkingSpot = self.object
+        if form.cleaned_data.get("assign_now") and form.cleaned_data.get("vehicle"):
+            # End any active assignment for this spot
+            prev = ParkingAssignment.objects.filter(spot=s, end_date__isnull=True).first()
+            if prev:
+                prev.end_date = form.cleaned_data.get("start_date") or timezone.localdate()
+                prev.save(update_fields=["end_date"])
+            ParkingAssignment.objects.create(
+                vehicle=form.cleaned_data["vehicle"],
+                spot=s,
+                start_date=form.cleaned_data.get("start_date") or timezone.localdate(),
+                driver_name=form.cleaned_data.get("driver_name") or "",
+            )
+            messages.success(self.request, "Spot updated and assigned.")
+        else:
+            messages.success(self.request, "Spot updated.")
+        return resp

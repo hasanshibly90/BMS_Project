@@ -2,25 +2,33 @@
 {% block content %}
 <div class="page-head">
   <h1 class="h1">Parking spots</h1>
-  <div class="sub">Create and manage parking spots.</div>
+  <div class="sub">Default code = Flat no. Edit a spot to assign to flat, vehicle, driver name.</div>
 </div>
 
 <div class="card">
-  <div class="actions">
-    <a class="btn ghost" href="{% url 'parking:vehicle_list' %}">Vehicles</a>
+  <div class="toolbar">
+    <div class="actions">
+      <a class="btn" href="{% url 'parking:spot_create' %}">Add spot</a>
+      <a class="btn ghost" href="{% url 'parking:vehicle_list' %}">Vehicles</a>
+    </div>
   </div>
+
   <table class="table">
-    <thead><tr><th>Code</th><th>Level</th><th>Reserved</th><th>Notes</th></tr></thead>
+    <thead><tr>
+      <th>Code</th><th>Flat</th><th>Level</th><th>Reserved</th><th>Notes</th><th style="width:140px;"></th>
+    </tr></thead>
     <tbody>
       {% for s in object_list %}
       <tr>
-        <td>{{ s.code }}</td>
+        <td><strong>{{ s.code }}</strong></td>
+        <td>{{ s.flat|default:"—" }}</td>
         <td>{{ s.level }}</td>
         <td>{% if s.is_reserved %}<span class="badge info">Yes</span>{% else %}<span class="badge muted">No</span>{% endif %}</td>
         <td>{{ s.notes }}</td>
+        <td><a class="btn ghost" href="{% url 'parking:spot_edit' s.pk %}">Edit</a></td>
       </tr>
       {% empty %}
-      <tr><td colspan="4" class="muted">No spots yet.</td></tr>
+      <tr><td colspan="6" class="muted">No spots yet.</td></tr>
       {% endfor %}
     </tbody>
   </table>

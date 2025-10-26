@@ -24,13 +24,12 @@ class ExternalOwner(models.Model):
 
 
 class ParkingSpot(models.Model):
-    code = models.CharField(max_length=10, unique=True, help_text="e.g., P-01")
+    code = models.CharField(max_length=10, unique=True, help_text="e.g., E-10")
     level = models.PositiveSmallIntegerField(default=1)
     is_reserved = models.BooleanField(default=False)
     notes = models.CharField(max_length=255, blank=True, default="")
 
-    # Link a spot to a Flat when the building allocates a dedicated bay.
-    # This creates f.parking_spot on Flat (what /overview/ is using).
+    # Dedicated spot for a flat (so Flat gets f.parking_spot)
     flat = models.OneToOneField(
         Flat, null=True, blank=True, on_delete=models.SET_NULL, related_name="parking_spot"
     )
@@ -40,6 +39,19 @@ class ParkingSpot(models.Model):
 
     def __str__(self):
         return self.code
+
+    def _flat_code(self):
+        if self.flat_id and self.flat:
+            return f"{self.flat.unit}-{self.flat.floor:02d}"
+        return None
+
+    def save(self, *args, **kwargs):
+        # Default: if code is blank and a flat is chosen, use flat code (E-10 etc.)
+        if (not self.code or not self.code.strip()) and self.flat_id:
+            fc = self._flat_code()
+            if fc:
+                self.code = fc
+        super().save(*args, **kwargs)
 
 
 class Vehicle(models.Model):
@@ -133,11 +145,12 @@ class Vehicle(models.Model):
 class ParkingAssignment(models.Model):
     vehicle = models.ForeignKey(
         Vehicle, on_delete=models.CASCADE, related_name="assignments",
-        null=True, blank=True  # keep nullable to avoid default prompts on legacy rows
+        null=True, blank=True  # keep nullable to avoid legacy prompts
     )
     spot = models.ForeignKey(ParkingSpot, on_delete=models.CASCADE, related_name="assignments")
     start_date = models.DateField()
     end_date = models.DateField(blank=True, null=True)
+    driver_name = models.CharField(max_length=120, blank=True, default="")  # NEW
     remarks = models.CharField(max_length=255, blank=True, default="")
 
     class Meta:
@@ -157,7 +170,8 @@ class ParkingAssignment(models.Model):
 
     def __str__(self):
         span = f"{self.start_date} → {self.end_date or 'present'}"
-        return f"{self.vehicle.plate_no if self.vehicle_id else '—'} → {self.spot} ({span})"
+        v = self.vehicle.plate_no if self.vehicle_id else "—"
+        return f"{v} → {self.spot} ({span})"
 
     @property
     def is_active(self):

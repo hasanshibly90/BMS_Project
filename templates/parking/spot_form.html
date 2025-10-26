@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="h1">{% if object %}Edit parking spot{% else %}Create parking spot{% endif %}</h1>
+  <div class="sub">Default code is the Flat no (e.g., E-10). You can also assign a vehicle + driver here.</div>
+</div>
+
+<div class="card">
+  <form method="post" class="form">{% csrf_token %}
+
+    <div class="grid-2" style="gap:16px">
+      <p>
+        <label><strong>Flat (optional, dedicated)</strong></label><br>
+        {{ form.flat }}
+        <small class="muted">If a flat is selected and code is blank, code will default to this flat (e.g., E-10).</small>
+      </p>
+      <p>
+        <label><strong>Code</strong></label><br>
+        {{ form.code }}
+        <button type="button" id="useFlatCode" class="btn ghost sm" style="margin-top:6px;">Use flat no as code</button>
+      </p>
+    </div>
+
+    <div class="grid-3" style="gap:16px">
+      <p><label><strong>Level</strong></label><br>{{ form.level }}</p>
+      <p><label><strong>Reserved?</strong></label><br>{{ form.is_reserved }}</p>
+      <p><label><strong>Notes</strong></label><br>{{ form.notes }}</p>
+    </div>
+
+    <hr style="border-color:var(--line);margin:14px 0">
+
+    <div class="grid-4" style="gap:16px">
+      <p>{{ form.assign_now }} <label><strong>Assign now?</strong></label></p>
+      <p><label><strong>Vehicle (plate)</strong></label><br>{{ form.vehicle }}</p>
+      <p><label><strong>Driver name</strong></label><br>{{ form.driver_name }}</p>
+      <p><label><strong>Start date</strong></label><br>{{ form.start_date }}</p>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn" type="submit">{% if object %}Save changes{% else %}Create spot{% endif %}</button>
+      <a class="btn ghost" href="{% url 'parking:spot_list' %}">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+(function(){
+  const flatSel = document.getElementById("id_flat");
+  const codeInp = document.getElementById("id_code");
+  const useBtn  = document.getElementById("useFlatCode");
+  function setCodeFromFlat() {
+    const opt = flatSel.options[flatSel.selectedIndex];
+    if (!opt) return;
+    const label = opt.text.trim();
+    if (label && label !== "---------") {
+      codeInp.value = label; // Flat.__str__ prints like E-10
+    }
+  }
+  if (useBtn) useBtn.addEventListener("click", setCodeFromFlat);
+  if (flatSel) flatSel.addEventListener("change", function(){
+    if (!codeInp.value || !codeInp.value.trim()) setCodeFromFlat();
+  });
+})();
+</script>
+{% endblock %}

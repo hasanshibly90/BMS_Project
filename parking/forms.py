@@ -41,3 +41,26 @@ class VehicleForm(forms.ModelForm):
             if not cleaned.get("start_date"):
                 self.add_error("start_date", "Provide a start date.")
         return cleaned
+
+
+class ParkingSpotForm(forms.ModelForm):
+    # Quick assignment from Spot Edit
+    assign_now = forms.BooleanField(required=False, initial=False, label="Assign now?")
+    vehicle = forms.ModelChoiceField(
+        queryset=Vehicle.objects.all().order_by("plate_no"), required=False, label="Vehicle (plate)"
+    )
+    driver_name = forms.CharField(max_length=120, required=False, label="Driver name")
+    start_date = forms.DateField(required=False, widget=_date, initial=timezone.localdate())
+
+    class Meta:
+        model = ParkingSpot
+        fields = ["code", "flat", "level", "is_reserved", "notes"]
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("assign_now"):
+            if not cleaned.get("vehicle"):
+                self.add_error("vehicle", "Choose a vehicle to assign.")
+            if not cleaned.get("start_date"):
+                self.add_error("start_date", "Pick a start date.")
+        return cleaned
