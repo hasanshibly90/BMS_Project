@@ -53,6 +53,27 @@ class ParkingSpot(models.Model):
                 self.code = fc
         super().save(*args, **kwargs)
 
+    # ===== Helpers expected by /overview/ =====
+    def active_assignment(self):
+        """Return the current active ParkingAssignment for this spot, or None."""
+        return self.assignments.filter(end_date__isnull=True)\
+                               .select_related("vehicle")\
+                               .first()
+
+    def is_occupied(self) -> bool:
+        """True if there’s an active assignment on this spot."""
+        return self.assignments.filter(end_date__isnull=True).exists()
+
+    def active_vehicle(self):
+        """Return the Vehicle of the active assignment, or None."""
+        a = self.active_assignment()
+        return a.vehicle if a else None
+
+    def active_driver_name(self) -> str:
+        """Return the driver name on the active assignment (may be '')."""
+        a = self.active_assignment()
+        return a.driver_name if a else ""
+
 
 class Vehicle(models.Model):
     CAR = "CAR"; BIKE = "BIKE"; MICROBUS = "MICROBUS"; TRUCK = "TRUCK"; OTHER = "OTHER"
@@ -150,7 +171,7 @@ class ParkingAssignment(models.Model):
     spot = models.ForeignKey(ParkingSpot, on_delete=models.CASCADE, related_name="assignments")
     start_date = models.DateField()
     end_date = models.DateField(blank=True, null=True)
-    driver_name = models.CharField(max_length=120, blank=True, default="")  # NEW
+    driver_name = models.CharField(max_length=120, blank=True, default="")
     remarks = models.CharField(max_length=255, blank=True, default="")
 
     class Meta:
