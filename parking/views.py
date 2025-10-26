@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Exists, OuterRef
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -100,6 +100,52 @@ class SpotListView(ListView):
     paginate_by = 50
     ordering = ["code"]
 
+    def get_queryset(self):
+        # Base queryset with a fast "occupied" annotation (active assignment exists)
+        active_qs = ParkingAssignment.objects.filter(
+            spot=OuterRef("pk"), end_date__isnull=True
+        )
+        qs = (
+            ParkingSpot.objects.select_related("flat")
+            .annotate(occupied=Exists(active_qs))
+            .order_by("code")
+        )
+
+        # Filters
+        unit = (self.request.GET.get("unit") or "").strip().upper()
+        floor = (self.request.GET.get("floor") or "").strip()
+        reserved = (self.request.GET.get("reserved") or "").strip().lower()  # yes/no/blank
+        occupied = (self.request.GET.get("occupied") or "").strip().lower()  # yes/no/blank
+
+        if unit:
+            qs = qs.filter(flat__unit=unit)
+        if floor.isdigit():
+            qs = qs.filter(flat__floor=int(floor))
+
+        if reserved == "yes":
+            qs = qs.filter(is_reserved=True)
+        elif reserved == "no":
+            qs = qs.filter(is_reserved=False)
+
+        if occupied == "yes":
+            qs = qs.filter(occupied=True)
+        elif occupied == "no":
+            qs = qs.filter(occupied=False)
+
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        # Current selections
+        ctx["unit"] = (self.request.GET.get("unit") or "").strip().upper()
+        ctx["floor"] = (self.request.GET.get("floor") or "").strip()
+        ctx["reserved"] = (self.request.GET.get("reserved") or "").strip().lower()
+        ctx["occupied"] = (self.request.GET.get("occupied") or "").strip().lower()
+        # Choices
+        ctx["units"] = list("ABCDEFGH")  # A–H
+        ctx["floors"] = list(range(1, 15))  # 1..14
+        return ctx
+
 
 class SpotCreateView(CreateView):
     model = ParkingSpot
@@ -170,30 +216,26 @@ class SpotDetailView(DetailView):
 class SpotSeedAllView(View):
     """
     Create/align one ParkingSpot per Flat:
-      - code = "<UNIT>-<FLOOR two-digits>" e.g., "E-10"
+      - code = "<UNIT>-<FLOOR two-digits>"
       - link spot.flat = Flat (OneToOne)
       - default level=1, is_reserved=True for dedicated spots
-    Existing unlinked spots are kept as-is.
     """
     def post(self, request):
         created = 0
         updated = 0
         for flat in Flat.objects.all().order_by("floor", "unit"):
             code = f"{flat.unit}-{flat.floor:02d}"
-
-            # If this flat already has a dedicated spot, keep it but sync the code if free
             spot = getattr(flat, "parking_spot", None)
             if spot:
+                # Sync code if unique and different
                 if spot.code != code and not ParkingSpot.objects.filter(code=code).exclude(pk=spot.pk).exists():
                     spot.code = code
                     spot.save(update_fields=["code"])
                 updated += 1
                 continue
 
-            # Otherwise create a new dedicated spot for this flat (avoid code collision)
             code_to_use = code
             if ParkingSpot.objects.filter(code=code_to_use).exists():
-                # Rare case: fall back to unique suffix
                 n = 2
                 while ParkingSpot.objects.filter(code=f"{code}-{n}").exists():
                     n += 1

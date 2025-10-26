@@ -7,8 +7,39 @@
 
 <div class="card">
   <div class="toolbar">
-    <div class="actions">
-      <form method="post" action="{% url 'parking:spot_seed_all' %}" style="display:inline-block;margin-right:8px;">
+    <form method="get" class="filters" style="display:flex; gap:8px; flex-wrap:wrap;">
+      <select name="unit" title="Unit (A–H)">
+        <option value="">All units</option>
+        {% for u in units %}
+          <option value="{{ u }}" {% if unit == u %}selected{% endif %}>{{ u }}</option>
+        {% endfor %}
+      </select>
+
+      <select name="floor" title="Floor (1–14)">
+        <option value="">All floors</option>
+        {% for f in floors %}
+          <option value="{{ f }}" {% if floor == f|stringformat:"s" %}selected{% endif %}>{{ f }}</option>
+        {% endfor %}
+      </select>
+
+      <select name="reserved" title="Reserved?">
+        <option value="">Reserved: Any</option>
+        <option value="yes" {% if reserved == "yes" %}selected{% endif %}>Yes</option>
+        <option value="no"  {% if reserved == "no"  %}selected{% endif %}>No</option>
+      </select>
+
+      <select name="occupied" title="Occupied?">
+        <option value="">Occupied: Any</option>
+        <option value="yes" {% if occupied == "yes" %}selected{% endif %}>Occupied</option>
+        <option value="no"  {% if occupied == "no"  %}selected{% endif %}>Free</option>
+      </select>
+
+      <button class="btn" type="submit">Filter</button>
+      <a class="btn ghost" href="{% url 'parking:spot_list' %}">Reset</a>
+    </form>
+
+    <div class="actions" style="margin-left:auto; display:flex; gap:8px;">
+      <form method="post" action="{% url 'parking:spot_seed_all' %}">
         {% csrf_token %}
         <button class="btn" type="submit">Create all (from flats)</button>
       </form>
@@ -18,9 +49,17 @@
   </div>
 
   <table class="table">
-    <thead><tr>
-      <th>Code</th><th>Flat</th><th>Level</th><th>Reserved</th><th>Notes</th><th style="width:140px;"></th>
-    </tr></thead>
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Flat</th>
+        <th>Level</th>
+        <th>Reserved</th>
+        <th>Occupied</th>
+        <th>Notes</th>
+        <th style="width:160px;"></th>
+      </tr>
+    </thead>
     <tbody>
       {% for s in object_list %}
       <tr>
@@ -28,6 +67,11 @@
         <td>{{ s.flat|default:"—" }}</td>
         <td>{{ s.level }}</td>
         <td>{% if s.is_reserved %}<span class="badge info">Yes</span>{% else %}<span class="badge muted">No</span>{% endif %}</td>
+        <td>
+          {% if s.is_occupied %}<span class="badge ok">Occupied</span>
+          {% else %}<span class="badge muted">Free</span>
+          {% endif %}
+        </td>
         <td>{{ s.notes }}</td>
         <td>
           <a class="btn ghost" href="{% url 'parking:spot_detail' s.pk %}">View</a>
@@ -35,7 +79,7 @@
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="6" class="muted">No spots yet.</td></tr>
+      <tr><td colspan="7" class="muted">No spots found.</td></tr>
       {% endfor %}
     </tbody>
   </table>
